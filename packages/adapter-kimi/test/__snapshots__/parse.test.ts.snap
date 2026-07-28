@@ -1,0 +1,68 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`kimi adapter parsing (golden fixtures) > assembles a Conversation from GetChat + ListMessages 1`] = `
+{
+  "createdAt": "2026-07-20T08:15:30Z",
+  "id": "00000000-0000-4000-8000-000000000001",
+  "messages": [
+    {
+      "childrenIds": [
+        "msg-answer",
+      ],
+      "content": [
+        {
+          "text": "潮汐是怎么形成的？",
+          "type": "text",
+        },
+      ],
+      "id": "msg-root",
+      "parentId": null,
+      "role": "user",
+      "timestamp": "2026-07-20T08:15:30Z",
+    },
+    {
+      "childrenIds": [
+        "msg-followup",
+      ],
+      "citations": [
+        {
+          "snippet": "潮汐是海水在天体引力作用下的周期性涨落。",
+          "title": "潮汐 - 维基百科",
+          "url": "https://example.org/wiki/tide",
+        },
+      ],
+      "content": [
+        {
+          "text": "潮汐主要由月球引力对地球不同位置的引力差造成，太阳引力起次要作用。",
+          "type": "text",
+        },
+      ],
+      "id": "msg-answer",
+      "parentId": "msg-root",
+      "reasoning": {
+        "content": "用户在问潮汐成因，需要解释引力差与地月系统。",
+        "summary": "解释潮汐的引力成因",
+      },
+      "role": "assistant",
+      "timestamp": "2026-07-20T08:15:45Z",
+    },
+    {
+      "content": [
+        {
+          "text": "那大潮和小潮又是怎么回事？",
+          "type": "text",
+        },
+      ],
+      "id": "msg-followup",
+      "parentId": "msg-answer",
+      "role": "user",
+      "timestamp": "2026-07-20T08:16:30Z",
+    },
+  ],
+  "platform": "kimi",
+  "schemaVersion": "1",
+  "sourceUrl": "https://www.kimi.com/chat/00000000-0000-4000-8000-000000000001",
+  "title": "潮汐是怎么形成的",
+  "updatedAt": "2026-07-20T08:17:02Z",
+}
+`;

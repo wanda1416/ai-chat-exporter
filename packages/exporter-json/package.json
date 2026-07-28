@@ -1,0 +1,17 @@
+{
+  "name": "@ace/exporter-json",
+  "version": "0.1.0",
+  "description": "Exports a Conversation as standard-schema JSON.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ace/core": "workspace:*",
+    "@ace/schema": "workspace:*"
+  }
+}

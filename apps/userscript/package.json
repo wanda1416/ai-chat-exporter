@@ -1,0 +1,23 @@
+{
+  "name": "@ace/userscript",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tampermonkey userscript — the v0.1 shipping form for Kimi export.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ace/adapter-kimi": "workspace:*",
+    "@ace/core": "workspace:*",
+    "@ace/exporter-json": "workspace:*",
+    "@ace/exporter-markdown": "workspace:*",
+    "@ace/exporter-zip": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^5.4.11",
+    "vite-plugin-monkey": "^4.0.6"
+  }
+}

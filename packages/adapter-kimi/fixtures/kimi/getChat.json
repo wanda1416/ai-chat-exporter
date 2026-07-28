@@ -1,0 +1,10 @@
+{
+  "chat": {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "name": "潮汐是怎么形成的",
+    "messageContent": "月球和太阳的引力共同作用……",
+    "createTime": "2026-07-20T08:15:30Z",
+    "updateTime": "2026-07-20T08:17:02Z",
+    "status": "CHAT_STATUS_NORMAL"
+  }
+}

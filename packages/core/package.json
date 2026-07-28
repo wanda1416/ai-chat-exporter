@@ -1,0 +1,16 @@
+{
+  "name": "@ace/core",
+  "version": "0.1.0",
+  "description": "Pipeline orchestration + Adapter/Exporter contracts.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ace/schema": "workspace:*"
+  }
+}

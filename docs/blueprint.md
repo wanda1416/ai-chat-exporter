@@ -118,19 +118,20 @@ interface PlatformAdapter {
 
 | 端点 (POST) | 请求体 | 返回 |
 |---|---|---|
-| `kimi.gateway.feed.v1.FeedService/ListFeeds` | `{page_size, project_id, filter_types:["FEED_TYPE_CHAT","FEED_TYPE_TASK"], include_pinned}` | 会话列表 `items[].chat{id,name,messageContent,createTime,updateTime,status,...}` |
-| `kimi.gateway.chat.v1.ChatService/GetChat` | `{chat_id}` | 会话元数据 + 附件 `files[]{meta{name,contentType,sizeBytes,checksum},blob.signUrl}` |
-| `kimi.gateway.chat.v1.ChatService/ListMessages` | `{chat_id}` | 完整消息树 `messages[]` |
+| `kimi.gateway.feed.v1.FeedService/ListFeeds` | `{page_size, project_id, filter_types:["FEED_TYPE_CHAT","FEED_TYPE_TASK"], include_pinned, page_token}` | 会话列表 `items[].chat{id,name,messageContent,createTime,updateTime,status,...}` + `nextPageToken` |
+| `kimi.gateway.chat.v1.ChatService/GetChat` | `{chat_id}` | `{chat{id,name,messageContent,createTime,updateTime,status}, files[]{meta{name,contentType,sizeBytes,checksum},blob.signUrl}}`（会话包在 `chat` 下） |
+| `kimi.gateway.chat.v1.ChatService/ListMessages` | `{chat_id}` | 完整消息树 `messages[]` + `nextPageToken` |
 
 **消息结构（直接决定 Schema）**：
 
 - `role`: `user` / `assistant` / `system`（含 system 根节点，id 为全 0）。
-- **树形分支**：每条消息带 `parentId` + `childrenMessageIds`，是树而非线性数组——印证 Schema 预留的 `siblings/branch` 字段是必要的。
-- `blocks[]` 按类型区分（对应 `ContentPart`）：`text`=正文；`think`=思维链（含 `content` + `summary`，对应 Schema `reasoning`）；`multiStage`/`stage`=阶段标记；`file`=附件引用（配合 `GetChat.files[].blob.signUrl` 下载）。
-- `status`: 如 `MESSAGE_STATUS_COMPLETED`；时间戳为纳秒级 ISO8601；ID 为 UUID；`scenario` 如 `SCENARIO_K2D5`。
-- 附件下载走带 `sig` 的临时签名 URL，导出时需存 URL 或即时下载。
+- **树形分支**：每条消息带 `parentId`（根为空串），但**不带** `childrenMessageIds`——子节点需由 `parentId` 反推。仍印证 Schema 预留 `parentId`/`childrenIds` 分支字段是必要的。
+- `blocks[]` 按类型区分（block 自带 `id`/`parentId`/`messageId`/`createTime` 元数据，内容为 oneof）：`text`=正文 `{content}`；`think`=思维链 `{content, summary}`（对应 Schema `reasoning`）；`tool`=工具调用 `{toolCallId,name,args,contents,status}`（进度脚手架，导出跳过）；`multiStage`/`stage`=阶段标记（跳过）。
+- **引用来源**：消息级 `references[]`（web 搜索引证），结构 `items[].search.base{title,url,siteName,snippet,...}`，映射到 Schema `citations`（按 url 去重）。
+- `status`: 如 `MESSAGE_STATUS_FINISHED`；时间戳为 ISO8601；ID 为 UUID；`scenario` 如 `SCENARIO_CHAT`。
+- 附件走 `GetChat.files[]` 的带 `sig` 临时签名 URL，导出时需存 URL 或即时下载。
 
-**待补**：`ListMessages` 分页游标（短对话一次返回完，未触发）；`ListFeeds` 翻页游标（需滚动列表触发）。
+**分页**：`ListFeeds` / `ListMessages` 均用请求参数 `page_token` + 响应 `nextPageToken`（空串即末页），已在适配器实现并由 `fixtures/kimi/` 快照测试覆盖。
 
 ## 附：产品形态决策
 

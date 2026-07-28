@@ -1,0 +1,17 @@
+{
+  "name": "@ace/exporter-markdown",
+  "version": "0.1.0",
+  "description": "Renders a Conversation as readable Markdown.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ace/core": "workspace:*",
+    "@ace/schema": "workspace:*"
+  }
+}

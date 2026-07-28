@@ -1,0 +1,22 @@
+{
+  "name": "ai-chat-exporter",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-first batch export tool for AI conversations",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "typecheck": "pnpm -r --no-bail typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "schema:json": "pnpm --filter @ace/schema run build:json"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  }
+}

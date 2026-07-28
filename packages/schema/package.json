@@ -1,0 +1,25 @@
+{
+  "name": "@ace/schema",
+  "version": "0.1.0",
+  "description": "Open, portable conversation interchange format (Schema v1) — single source of truth via Zod.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "files": [
+    "src",
+    "json-schema"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build:json": "tsx scripts/build-json.ts"
+  },
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "zod-to-json-schema": "^3.23.5"
+  }
+}

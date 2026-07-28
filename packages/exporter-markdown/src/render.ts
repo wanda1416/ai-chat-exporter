@@ -1,0 +1,72 @@
+import type { Conversation, ContentPart, Message } from "@ace/schema";
+
+const ROLE_HEADING: Record<Message["role"], string> = {
+  user: "🧑 User",
+  assistant: "🤖 Assistant",
+  system: "⚙️ System",
+};
+
+function renderPart(part: ContentPart): string {
+  switch (part.type) {
+    case "text":
+      return part.text;
+    case "code":
+      return "```" + (part.language ?? "") + "\n" + part.code + "\n```";
+    case "table": {
+      const header = `| ${part.headers.join(" | ")} |`;
+      const divider = `| ${part.headers.map(() => "---").join(" | ")} |`;
+      const rows = part.rows.map((row) => `| ${row.join(" | ")} |`);
+      return [header, divider, ...rows].join("\n");
+    }
+    case "image":
+      return `![${part.alt ?? ""}](${part.url ?? part.attachmentId ?? ""})`;
+    case "file":
+      return `📎 [${part.name ?? part.attachmentId}](${part.attachmentId})`;
+  }
+}
+
+function renderMessage(message: Message): string {
+  const lines: string[] = [`## ${ROLE_HEADING[message.role]}`];
+
+  if (message.reasoning) {
+    lines.push(
+      "<details><summary>💭 Reasoning</summary>\n\n" + message.reasoning.content + "\n\n</details>",
+    );
+  }
+
+  const body = message.content.map(renderPart).join("\n\n");
+  if (body) lines.push(body);
+
+  if (message.citations?.length) {
+    const items = message.citations.map((c, i) => {
+      const label = c.title ?? c.url ?? `Source ${i + 1}`;
+      return c.url ? `${i + 1}. [${label}](${c.url})` : `${i + 1}. ${label}`;
+    });
+    lines.push("**Sources**\n\n" + items.join("\n"));
+  }
+
+  return lines.join("\n\n");
+}
+
+/** Renders the full conversation to a Markdown document. */
+export function renderMarkdown(conversation: Conversation): string {
+  const metaBits = [
+    `Platform: ${conversation.platform}`,
+    conversation.model ? `Model: ${conversation.model}` : null,
+    conversation.updatedAt ? `Updated: ${conversation.updatedAt}` : null,
+  ].filter(Boolean);
+
+  const parts: string[] = [`# ${conversation.title || conversation.id}`];
+  if (metaBits.length) parts.push(`> ${metaBits.join(" · ")}`);
+  for (const message of conversation.messages) parts.push(renderMessage(message));
+
+  if (conversation.attachments?.length) {
+    const items = conversation.attachments.map((a) => {
+      const label = a.name ?? a.id;
+      return a.url ? `- [${label}](${a.url})` : `- ${label}`;
+    });
+    parts.push("## Attachments\n\n" + items.join("\n"));
+  }
+
+  return parts.join("\n\n") + "\n";
+}

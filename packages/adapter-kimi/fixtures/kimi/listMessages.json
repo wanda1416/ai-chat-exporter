@@ -1,0 +1,112 @@
+{
+  "messages": [
+    {
+      "id": "msg-root",
+      "parentId": "",
+      "role": "ROLE_USER",
+      "status": "MESSAGE_STATUS_FINISHED",
+      "scenario": "SCENARIO_CHAT",
+      "createTime": "2026-07-20T08:15:30Z",
+      "isGoal": false,
+      "blocks": [
+        {
+          "id": "blk-1",
+          "parentId": "",
+          "messageId": "msg-root",
+          "createTime": "2026-07-20T08:15:30Z",
+          "text": { "content": "潮汐是怎么形成的？" }
+        }
+      ]
+    },
+    {
+      "id": "msg-answer",
+      "parentId": "msg-root",
+      "role": "ROLE_ASSISTANT",
+      "status": "MESSAGE_STATUS_FINISHED",
+      "scenario": "SCENARIO_CHAT",
+      "createTime": "2026-07-20T08:15:45Z",
+      "isGoal": true,
+      "blocks": [
+        {
+          "id": "blk-2",
+          "parentId": "blk-1",
+          "messageId": "msg-answer",
+          "createTime": "2026-07-20T08:15:46Z",
+          "think": {
+            "content": "用户在问潮汐成因，需要解释引力差与地月系统。",
+            "summary": "解释潮汐的引力成因"
+          }
+        },
+        {
+          "id": "blk-3",
+          "parentId": "blk-2",
+          "messageId": "msg-answer",
+          "createTime": "2026-07-20T08:15:47Z",
+          "tool": {
+            "toolCallId": "call-abc",
+            "name": "web_search",
+            "status": "TOOL_STATUS_SUCCESS"
+          }
+        },
+        {
+          "id": "blk-4",
+          "parentId": "blk-3",
+          "messageId": "msg-answer",
+          "createTime": "2026-07-20T08:15:48Z",
+          "text": {
+            "content": "潮汐主要由月球引力对地球不同位置的引力差造成，太阳引力起次要作用。"
+          }
+        }
+      ],
+      "references": [
+        {
+          "matchedText": "月球引力",
+          "type": "REFERENCE_TYPE_SEARCH",
+          "items": [
+            {
+              "search": {
+                "id": "ref-1",
+                "base": {
+                  "title": "潮汐 - 维基百科",
+                  "url": "https://example.org/wiki/tide",
+                  "snippet": "潮汐是海水在天体引力作用下的周期性涨落。",
+                  "siteName": "example.org"
+                }
+              }
+            },
+            {
+              "search": {
+                "id": "ref-2",
+                "base": {
+                  "title": "潮汐 - 维基百科",
+                  "url": "https://example.org/wiki/tide",
+                  "snippet": "重复来源，应被去重。",
+                  "siteName": "example.org"
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "msg-followup",
+      "parentId": "msg-answer",
+      "role": "ROLE_USER",
+      "status": "MESSAGE_STATUS_FINISHED",
+      "scenario": "SCENARIO_CHAT",
+      "createTime": "2026-07-20T08:16:30Z",
+      "isGoal": false,
+      "blocks": [
+        {
+          "id": "blk-5",
+          "parentId": "blk-4",
+          "messageId": "msg-followup",
+          "createTime": "2026-07-20T08:16:30Z",
+          "text": { "content": "那大潮和小潮又是怎么回事？" }
+        }
+      ]
+    }
+  ],
+  "nextPageToken": ""
+}
