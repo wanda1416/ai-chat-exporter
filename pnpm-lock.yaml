@@ -43,6 +43,15 @@ importers:
         specifier: ^4.0.6
         version: 4.0.6(vite@5.4.21(@types/node@22.20.1))
 
+  packages/adapter-gemini:
+    dependencies:
+      '@ace/core':
+        specifier: workspace:*
+        version: link:../core
+      '@ace/schema':
+        specifier: workspace:*
+        version: link:../schema
+
   packages/adapter-kimi:
     dependencies:
       '@ace/core':

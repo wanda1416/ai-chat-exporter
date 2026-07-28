@@ -1,0 +1,63 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`gemini adapter parsing (golden fixtures) > assembles a Conversation from an hNvQHb payload 1`] = `
+{
+  "createdAt": "2026-07-13T19:07:07.000Z",
+  "id": "c_0000000000000001",
+  "messages": [
+    {
+      "content": [
+        {
+          "text": "开源项目命名用 _ 还是 - 有什么讲究？",
+          "type": "text",
+        },
+      ],
+      "id": "m_user_00000001",
+      "role": "user",
+    },
+    {
+      "content": [
+        {
+          "text": "**结论**：仓库名/包名首选 \`-\`，代码里的模块名首选 \`_\`。
+
+- npm 生态统一用 \`-\`
+- Python 导入时必须用 \`_\`",
+          "type": "text",
+        },
+      ],
+      "id": "rc_00000000000000b1",
+      "model": "3.6 Flash",
+      "role": "assistant",
+      "timestamp": "2026-07-13T19:07:07.000Z",
+    },
+    {
+      "content": [
+        {
+          "text": "那 Python 包名到底用哪个？",
+          "type": "text",
+        },
+      ],
+      "id": "m_user_00000002",
+      "role": "user",
+    },
+    {
+      "content": [
+        {
+          "text": "PyPI 上**发布名**首选 \`-\`（如 \`scikit-learn\`），但代码 \`import\` 时要用 \`_\`。",
+          "type": "text",
+        },
+      ],
+      "id": "rc_00000000000000b3",
+      "model": "3.6 Flash",
+      "role": "assistant",
+      "timestamp": "2026-07-13T19:08:20.000Z",
+    },
+  ],
+  "model": "3.6 Flash",
+  "platform": "gemini",
+  "schemaVersion": "1",
+  "sourceUrl": "https://gemini.google.com/app/0000000000000001",
+  "title": "潮汐是怎么形成的",
+  "updatedAt": "2026-07-13T19:08:20.000Z",
+}
+`;

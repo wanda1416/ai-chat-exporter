@@ -1,0 +1,17 @@
+{
+  "name": "@ace/adapter-gemini",
+  "version": "0.1.0",
+  "description": "Gemini (gemini.google.com) platform adapter — validates schema generality on a second platform.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ace/core": "workspace:*",
+    "@ace/schema": "workspace:*"
+  }
+}

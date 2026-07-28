@@ -14,6 +14,9 @@ build/
 *.log
 npm-debug.log*
 
+# Scratch / capture artifacts (may contain real personal data)
+tmp/
+
 # Editor / OS
 .DS_Store
 .idea/

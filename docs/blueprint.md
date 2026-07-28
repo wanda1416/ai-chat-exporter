@@ -45,7 +45,8 @@ ContentPart:  text | code | table | image | file  (结构化内容块)
 ├── packages/
 │   ├── schema/              # Zod 定义 + JSON Schema 导出（零依赖）
 │   ├── core/                # 管道编排、Adapter/Exporter 接口、拦截器框架、运行时抽象
-│   ├── adapter-kimi/        # v0.1 唯一适配器
+│   ├── adapter-kimi/        # v0.1 参考适配器（干净 JSON API）
+│   ├── adapter-gemini/      # 第二适配器（batchexecute），验证 Schema 通用性
 │   ├── exporter-markdown/
 │   ├── exporter-json/
 │   └── exporter-zip/        # 打包批量结果 (fflate)
@@ -132,6 +133,45 @@ interface PlatformAdapter {
 - 附件走 `GetChat.files[]` 的带 `sig` 临时签名 URL，导出时需存 URL 或即时下载。
 
 **分页**：`ListFeeds` / `ListMessages` 均用请求参数 `page_token` + 响应 `nextPageToken`（空串即末页），已在适配器实现并由 `fixtures/kimi/` 快照测试覆盖。
+
+## 9. Gemini API 实测结果（第二平台，验证 Schema 通用性）
+
+> 2026-07 通过登录态浏览器（复用日常 Chrome profile 的 Cookie）实测确认：`batchexecute` 两个 RPC 返回 200、真实数据。这是刻意选的「反面样本」——与 Kimi 干净的 ConnectRPC/JSON 截然不同，用来检验 Schema v1 与两段式管道是否只是过拟合 Kimi。
+
+**基址与协议**：`POST https://gemini.google.com/_/BardChatUi/data/batchexecute?rpcids=<id>&source-path=/app&f.sid=<sid>&bl=<release>&hl=<lang>&_reqid=<n>&rt=c`。**没有干净 JSON API**：所有调用走 Google 内部 `batchexecute` 协议，请求体 `application/x-www-form-urlencoded`。
+
+**认证（关键，与 Kimi 相反）**：靠 **Cookie**（登录态 `SAPISID` 等，`credentials: include`）+ 页面里的 XSRF token。三个 token 都在 `window.WIZ_global_data`：`at`=`SNlM0e`（XSRF，进请求体）、`bl`=`cfb2h`（后端版本）、`f.sid`=`FdrFJe`（前端会话）。油猴脚本在 `gemini.google.com` 源内运行天然带 Cookie 且可读 `WIZ_global_data`，契合。
+
+**请求体**：`f.req=<URL 编码的 [[["<rpcid>","<内层 payload 的 JSON 字符串>",null,"generic"]]]>&at=<token>&`。内层 payload 本身是被 JSON 序列化成字符串再塞进外层数组。
+
+**响应（反 JSON 包裹）**：以 `)]}'` 前缀开头，后跟若干「长度行 + JSON chunk」；有用的 chunk 形如 `[["wrb.fr","<rpcid>","<内层结果，又是 JSON 字符串>",...]]`。解析需两层：先按行剥壳定位 `wrb.fr` 拿到字符串，再 `JSON.parse` 得到深层嵌套数组。适配器 `extractRpcPayload` 对长度行做容错（逐行试解析，不依赖长度准确）。
+
+**两个核心 RPC**：
+
+| RPC (rpcid) | 内层请求 | 内层响应（**纯位置数组，无字段名**） |
+|---|---|---|
+| 列表 `MaZiqc` | `[20, "<pageToken>", [0,null,1]]` | `[null, "<nextPageToken>", [item...]]`；`item=[convId, title, null×3, [sec,nanos], …, responseId]` |
+| 详情 `hNvQHb` | `["c_<convId>", 10, null, 1, [0], [4], null, 1]` | `[[turn...], null, null, []]` |
+
+**详情 turn 结构（直接决定解析）**：`turn = [[convId, respId], null, [userPrompt…], [candidates…], [sec,nanos]]`。
+
+- 用户文本 `turn[2][0][0]`，用户消息 id `turn[2][4]`；
+- 候选数组 `turn[3][0]`，每个候选 `[candidateId, [markdown], …]`；被选中候选 id 在 `turn[3][3]`，助手正文取该候选的 `[1][0]`（干净 Markdown，另有一份结构化富文本表示，v0.1 用不到）；
+- 模型名（如 `3.6 Flash`）是候选块尾部的裸字符串（从尾部扫描第一个非 id 字符串即得）；
+- 时间戳 `turn[4]=[秒,纳秒]`。
+
+**与 Kimi 的关键差异 → 全部落到「适配器层」，Schema 与 core 零改动**：
+
+| 维度 | Kimi | Gemini |
+|---|---|---|
+| 传输 | 干净 ConnectRPC/JSON | `batchexecute` 位置数组 + 反 JSON 包裹 |
+| 认证 | `Authorization: Bearer`（localStorage JWT） | Cookie + `at` XSRF token（WIZ_global_data） |
+| 消息组织 | **树形**（`parentId`，子节点反推 `childrenIds`） | **线性**多轮（无分支，不产出树字段） |
+| 正文 | 分块 `blocks[]`（text/think/tool…） | 单块 Markdown 字符串 |
+| 引用/思维链 | `references`→citations、`think`→reasoning | 本次样本均无（字段留空即可） |
+| 标题 | `GetChat` 直接给 | 详情 RPC **不含**，从列表带入或用首条 prompt 兜底 |
+
+**通用性结论**：两个传输/认证/数据模型都截然不同的平台，映射到**同一份 Schema v1**、复用**同一套 `PlatformAdapter` 接口与管道**，全程不改 `schema` 与 `core`——差异被完全隔离在适配器内。尤其验证了几个 Schema 设计决策站得住：① `parentId`/`childrenIds` 为可选，天然同时容纳树形（Kimi）与线性（Gemini）；② `Message.model` 的按条覆盖、`content[]` 结构化块、`citations`/`reasoning` 可选，都能优雅降级到「没有就不填」。由 `packages/adapter-gemini` + `fixtures/gemini/` 快照测试固化，佐证两段式管道不是对 Kimi 的过拟合。
 
 ## 附：产品形态决策
 
