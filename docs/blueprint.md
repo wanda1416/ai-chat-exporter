@@ -105,7 +105,7 @@ interface PlatformAdapter {
 
 开仓库后的第 1 个 issue 原计划：**用 DevTools 抓取 Kimi 真实 API**（会话列表 + 消息详情两个端点的 URL、认证方式、响应 JSON），脱敏后作为第一批 fixtures 提交。**这一步完成前不写任何适配器代码**——避免重蹈"凭想象写骨架"的覆辙。
 
-**验证状态**：已通过浏览器实测完成（返回 200，真实数据确认），完整结果见第 8 节。剩余待办：把实测响应脱敏后落成 `fixtures/kimi/`（含真实对话内容，进库前必须脱敏）；长对话的 `ListMessages` 分页游标待用长会话补测。
+**验证状态**：已通过浏览器实测完成（返回 200，真实数据确认），完整结果见第 8 节。`fixtures/kimi/` 脱敏样本已落地并由快照测试覆盖。2026-07 进一步做了**端到端实跑**（登录态浏览器内注入完整管道，真实导出 2 条会话含 151 消息长会话）：List→Fetch→Markdown/JSON→ZIP 全链路 0 失败，表格/代码/思维链/引用保真；并借此发现并修复了 `ListMessages` 逆序返回导致的消息顺序 bug（见第 8 节）。此后（2026-07）又用 CDP 调试浏览器把最近 20 条会话真实导出落盘（40 文件，SHA-256 与源逐字节一致），并修掉了空 `system` 根节点渲染成悬空标题的瑕疵（见第 10 节）。剩余待办：长对话的 `ListMessages` 分页游标待用更长会话补测。
 
 ## 8. Kimi API 实测结果（技术验证）
 
@@ -125,8 +125,9 @@ interface PlatformAdapter {
 
 **消息结构（直接决定 Schema）**：
 
-- `role`: `user` / `assistant` / `system`（含 system 根节点，id 为全 0）。
+- `role`: `user` / `assistant` / `system`（含 system 根节点，id 为全 0）。该根节点 `content` 为空——Markdown 渲染器跳过「无正文/思维链/引用」的空消息，避免产生光秃秃的 `## ⚙️ System` 悬空标题（`packages/exporter-markdown` 附回归测试）。
 - **树形分支**：每条消息带 `parentId`（根为空串），但**不带** `childrenMessageIds`——子节点需由 `parentId` 反推。仍印证 Schema 预留 `parentId`/`childrenIds` 分支字段是必要的。
+- **返回顺序（实测坑）**：`messages[]` **逆序返回**（最新 turn 在前），且同一 turn 内**助手回复排在它自己的用户提问之前**（两者 `createTime` 仅差几微秒）。直接按数组序导出会「答在问前、通篇倒序」。适配器 `toConversation` 按 `createTime` 升序**稳定重排**修正——此坑由 2026-07 端到端实跑（一条 151 消息真实会话）发现，`fixtures/kimi/listMessages.json` 已特意改成逆序样本以守护该行为。
 - `blocks[]` 按类型区分（block 自带 `id`/`parentId`/`messageId`/`createTime` 元数据，内容为 oneof）：`text`=正文 `{content}`；`think`=思维链 `{content, summary}`（对应 Schema `reasoning`）；`tool`=工具调用 `{toolCallId,name,args,contents,status}`（进度脚手架，导出跳过）；`multiStage`/`stage`=阶段标记（跳过）。
 - **引用来源**：消息级 `references[]`（web 搜索引证），结构 `items[].search.base{title,url,siteName,snippet,...}`，映射到 Schema `citations`（按 url 去重）。
 - `status`: 如 `MESSAGE_STATUS_FINISHED`；时间戳为 ISO8601；ID 为 UUID；`scenario` 如 `SCENARIO_CHAT`。
@@ -172,6 +173,16 @@ interface PlatformAdapter {
 | 标题 | `GetChat` 直接给 | 详情 RPC **不含**，从列表带入或用首条 prompt 兜底 |
 
 **通用性结论**：两个传输/认证/数据模型都截然不同的平台，映射到**同一份 Schema v1**、复用**同一套 `PlatformAdapter` 接口与管道**，全程不改 `schema` 与 `core`——差异被完全隔离在适配器内。尤其验证了几个 Schema 设计决策站得住：① `parentId`/`childrenIds` 为可选，天然同时容纳树形（Kimi）与线性（Gemini）；② `Message.model` 的按条覆盖、`content[]` 结构化块、`citations`/`reasoning` 可选，都能优雅降级到「没有就不填」。由 `packages/adapter-gemini` + `fixtures/gemini/` 快照测试固化，佐证两段式管道不是对 Kimi 的过拟合。
+
+## 10. 端到端实跑与 CDP 抓取的工程注意事项（dogfood）
+
+> 2026-07 通过 CDP 调试浏览器（复用登录态）把完整管道注入线上 Kimi 页面实跑，真实导出最近 20 条会话落盘（40 文件，SHA-256 全部与源逐字节一致）。过程沉淀出几条「浏览器内取数 → 落盘」的工程坑，对后续 CLI / 扩展形态的抓取链路同样适用。
+
+- **大字符串返回会卡死**：`agent-browser eval` 返回 >~100KB 的字符串会挂起。取数必须分块——把内容留在页面（如 `window.__FILES__`），按 ≤60KB 切片多次取回、本地拼接；切勿一次性返回整包。
+- **控制台编码腐蚀 UTF-8**：中文 Windows 上 PowerShell 控制台按 GBK 回显，会把 agent-browser 的 UTF-8 stdout 解码坏（中文/emoji 乱码、文件名非法）。**传输层全程走 base64（纯 ASCII）**：页面内先 `TextEncoder` 编码再 base64（`btoa` 仅支持 Latin1，必须先 UTF-8），本地 `FromBase64String` 得字节后 `WriteAllBytes` 直写，绕开一切编码与 JSON 转义边界问题。
+- **eval 的两个行为**：会 `await` 返回的 Promise；`window` 跨 eval 持久（可分步在页面累积状态）。`--stdin` 传代码在 CRLF/BOM 下失败，改用 `eval -b <base64>` 传代码更稳。
+- **确定性校验**：落盘后不要靠肉眼看控制台（会被 GBK 假乱码误导）——页面内对每个文件内容算 SHA-256，与磁盘 `Get-FileHash` 逐一比对，match 数 = 文件数才算通过。
+- **规模提示**：实测账号内 `ListFeeds` 全量分页得 1602 条会话——全量导出需分批（单次 eval 扛不住长时间运行），也印证 v0.2 CLI 增量备份的必要性。
 
 ## 附：产品形态决策
 

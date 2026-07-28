@@ -94,6 +94,25 @@ function parseMessage(raw: RawMessage): Message {
   return message;
 }
 
+/**
+ * Reorders messages chronologically (oldest-first) by `timestamp`.
+ *
+ * Kimi's ListMessages returns turns newest-first, and even lists the assistant
+ * reply just *before* its own user prompt within a turn — so the raw array
+ * reads backwards. We sort by the microsecond-precision createTime; ties and
+ * missing timestamps fall back to the original (stable) order.
+ */
+function sortChronologically(messages: Message[]): void {
+  const originalIndex = new Map<Message, number>();
+  messages.forEach((m, i) => originalIndex.set(m, i));
+  messages.sort((a, b) => {
+    const ta = a.timestamp ?? "";
+    const tb = b.timestamp ?? "";
+    if (ta && tb && ta !== tb) return ta < tb ? -1 : 1;
+    return (originalIndex.get(a) ?? 0) - (originalIndex.get(b) ?? 0);
+  });
+}
+
 /** Derives each message's `childrenIds` from the `parentId` links (Kimi omits it). */
 function linkChildren(messages: Message[]): void {
   const childrenOf = new Map<string, string[]>();
@@ -147,6 +166,7 @@ export function toConversation(
   const summary = chat.chat ?? {};
   const attachments = parseAttachments(chat);
   const parsedMessages = (messages.messages ?? []).map(parseMessage);
+  sortChronologically(parsedMessages);
   linkChildren(parsedMessages);
 
   const conversation: Conversation = {

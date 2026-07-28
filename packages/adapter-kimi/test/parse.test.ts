@@ -61,6 +61,14 @@ describe("kimi adapter parsing (golden fixtures)", () => {
 
     const [root, answer, followup] = conversation.messages;
 
+    // Kimi returns messages newest-first (assistant before its own user prompt);
+    // toConversation must reorder them chronologically by createTime.
+    expect(conversation.messages.map((m) => m.id)).toEqual([
+      "msg-root",
+      "msg-answer",
+      "msg-followup",
+    ]);
+
     // parentId → childrenIds is derived (Kimi omits childrenIds).
     expect(root.parentId).toBeNull();
     expect(root.childrenIds).toEqual(["msg-answer"]);

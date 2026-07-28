@@ -1,20 +1,20 @@
 {
   "messages": [
     {
-      "id": "msg-root",
-      "parentId": "",
+      "id": "msg-followup",
+      "parentId": "msg-answer",
       "role": "ROLE_USER",
       "status": "MESSAGE_STATUS_FINISHED",
       "scenario": "SCENARIO_CHAT",
-      "createTime": "2026-07-20T08:15:30Z",
+      "createTime": "2026-07-20T08:16:30Z",
       "isGoal": false,
       "blocks": [
         {
-          "id": "blk-1",
-          "parentId": "",
-          "messageId": "msg-root",
-          "createTime": "2026-07-20T08:15:30Z",
-          "text": { "content": "潮汐是怎么形成的？" }
+          "id": "blk-5",
+          "parentId": "blk-4",
+          "messageId": "msg-followup",
+          "createTime": "2026-07-20T08:16:30Z",
+          "text": { "content": "那大潮和小潮又是怎么回事？" }
         }
       ]
     },
@@ -90,20 +90,20 @@
       ]
     },
     {
-      "id": "msg-followup",
-      "parentId": "msg-answer",
+      "id": "msg-root",
+      "parentId": "",
       "role": "ROLE_USER",
       "status": "MESSAGE_STATUS_FINISHED",
       "scenario": "SCENARIO_CHAT",
-      "createTime": "2026-07-20T08:16:30Z",
+      "createTime": "2026-07-20T08:15:30Z",
       "isGoal": false,
       "blocks": [
         {
-          "id": "blk-5",
-          "parentId": "blk-4",
-          "messageId": "msg-followup",
-          "createTime": "2026-07-20T08:16:30Z",
-          "text": { "content": "那大潮和小潮又是怎么回事？" }
+          "id": "blk-1",
+          "parentId": "",
+          "messageId": "msg-root",
+          "createTime": "2026-07-20T08:15:30Z",
+          "text": { "content": "潮汐是怎么形成的？" }
         }
       ]
     }

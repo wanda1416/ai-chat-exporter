@@ -25,27 +25,35 @@ function renderPart(part: ContentPart): string {
   }
 }
 
-function renderMessage(message: Message): string {
-  const lines: string[] = [`## ${ROLE_HEADING[message.role]}`];
+/**
+ * Renders a single message, or `null` when it carries nothing to show.
+ * Kimi's conversation tree includes an all-zero `system` root node with empty
+ * `content`, no reasoning and no citations; rendering it would leave a bare,
+ * dangling `## ⚙️ System` heading, so such empty messages are skipped.
+ */
+function renderMessage(message: Message): string | null {
+  const blocks: string[] = [];
 
   if (message.reasoning) {
-    lines.push(
+    blocks.push(
       "<details><summary>💭 Reasoning</summary>\n\n" + message.reasoning.content + "\n\n</details>",
     );
   }
 
   const body = message.content.map(renderPart).join("\n\n");
-  if (body) lines.push(body);
+  if (body) blocks.push(body);
 
   if (message.citations?.length) {
     const items = message.citations.map((c, i) => {
       const label = c.title ?? c.url ?? `Source ${i + 1}`;
       return c.url ? `${i + 1}. [${label}](${c.url})` : `${i + 1}. ${label}`;
     });
-    lines.push("**Sources**\n\n" + items.join("\n"));
+    blocks.push("**Sources**\n\n" + items.join("\n"));
   }
 
-  return lines.join("\n\n");
+  if (!blocks.length) return null;
+
+  return [`## ${ROLE_HEADING[message.role]}`, ...blocks].join("\n\n");
 }
 
 /** Renders the full conversation to a Markdown document. */
@@ -58,7 +66,10 @@ export function renderMarkdown(conversation: Conversation): string {
 
   const parts: string[] = [`# ${conversation.title || conversation.id}`];
   if (metaBits.length) parts.push(`> ${metaBits.join(" · ")}`);
-  for (const message of conversation.messages) parts.push(renderMessage(message));
+  for (const message of conversation.messages) {
+    const rendered = renderMessage(message);
+    if (rendered) parts.push(rendered);
+  }
 
   if (conversation.attachments?.length) {
     const items = conversation.attachments.map((a) => {
