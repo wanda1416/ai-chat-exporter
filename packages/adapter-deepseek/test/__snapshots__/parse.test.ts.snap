@@ -1,0 +1,102 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`deepseek adapter parsing (golden fixtures) > assembles a Conversation from history_messages 1`] = `
+{
+  "attachments": [
+    {
+      "id": "file-0000-0001",
+      "name": "song-titles.txt",
+      "sizeBytes": 2048,
+    },
+  ],
+  "createdAt": "2026-07-20T08:47:18.043Z",
+  "id": "00000000-0000-4000-8000-0000000000aa",
+  "messages": [
+    {
+      "attachments": [
+        "file-0000-0001",
+      ],
+      "childrenIds": [
+        "2",
+      ],
+      "content": [
+        {
+          "text": "Summarize how Song-dynasty people addressed relatives. See the attached notes.",
+          "type": "text",
+        },
+      ],
+      "id": "1",
+      "parentId": null,
+      "role": "user",
+      "timestamp": "2026-07-20T08:47:50.500Z",
+    },
+    {
+      "childrenIds": [
+        "3",
+      ],
+      "citations": [
+        {
+          "snippet": "How Song-era families addressed one another.",
+          "title": "Song Honorifics",
+          "url": "https://example.com/song",
+        },
+        {
+          "snippet": "A glossary of classical kinship terms.",
+          "title": "Kinship Terms",
+          "url": "https://example.org/kinship",
+        },
+      ],
+      "content": [
+        {
+          "text": "In the Song dynasty, children called their father **爹** and mother **娘**.",
+          "type": "text",
+        },
+      ],
+      "id": "2",
+      "parentId": "1",
+      "reasoning": {
+        "content": "The user wants a summary of Song kinship address; recall the sources.",
+        "summary": "Thought for 13s",
+      },
+      "role": "assistant",
+      "timestamp": "2026-07-20T08:48:10.200Z",
+    },
+    {
+      "childrenIds": [
+        "5",
+      ],
+      "content": [
+        {
+          "text": "Which term is the most formal?",
+          "type": "text",
+        },
+      ],
+      "id": "3",
+      "parentId": "2",
+      "role": "user",
+      "timestamp": "2026-07-20T08:49:14.600Z",
+    },
+    {
+      "content": [
+        {
+          "text": "The most formal address is **尊翁** for another's father.",
+          "type": "text",
+        },
+      ],
+      "id": "5",
+      "parentId": "3",
+      "reasoning": {
+        "content": "Comparing formality across the candidate terms.",
+        "summary": "Thought for 3s",
+      },
+      "role": "assistant",
+      "timestamp": "2026-07-20T08:50:00.000Z",
+    },
+  ],
+  "platform": "deepseek",
+  "schemaVersion": "1",
+  "sourceUrl": "https://chat.deepseek.com/a/chat/s/00000000-0000-4000-8000-0000000000aa",
+  "title": "Song-era forms of address",
+  "updatedAt": "2026-07-20T08:50:00.973Z",
+}
+`;

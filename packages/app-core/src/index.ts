@@ -1,3 +1,4 @@
+import { DeepSeekAdapter } from "@ace/adapter-deepseek";
 import { GeminiAdapter } from "@ace/adapter-gemini";
 import { GrokAdapter } from "@ace/adapter-grok";
 import { KimiAdapter } from "@ace/adapter-kimi";
@@ -41,7 +42,12 @@ function describeProgress(p: ExportProgress): string {
 
 /** Picks the adapter matching the current page, or null if unsupported. */
 function resolveAdapter(): PlatformAdapter | null {
-  const adapters: PlatformAdapter[] = [new KimiAdapter(), new GeminiAdapter(), new GrokAdapter()];
+  const adapters: PlatformAdapter[] = [
+    new KimiAdapter(),
+    new GeminiAdapter(),
+    new GrokAdapter(),
+    new DeepSeekAdapter(),
+  ];
   return adapters.find((adapter) => adapter.detect()) ?? null;
 }
 

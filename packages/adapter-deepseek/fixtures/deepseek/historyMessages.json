@@ -1,0 +1,125 @@
+{
+  "chat_session": {
+    "id": "00000000-0000-4000-8000-0000000000aa",
+    "title": "Song-era forms of address",
+    "title_type": "SYSTEM",
+    "model_type": "default",
+    "pinned": false,
+    "updated_at": 1784537400.973,
+    "seq_id": 206700843,
+    "agent": "chat",
+    "version": 5,
+    "is_empty": false,
+    "current_message_id": 5,
+    "inserted_at": 1784537238.043
+  },
+  "chat_messages": [
+    {
+      "message_id": 3,
+      "parent_id": 2,
+      "model": "",
+      "role": "USER",
+      "status": "FINISHED",
+      "content": "Which term is the most formal?",
+      "thinking_content": null,
+      "thinking_elapsed_secs": null,
+      "files": [],
+      "search_results": null,
+      "search_status": null,
+      "inserted_at": 1784537354.6
+    },
+    {
+      "message_id": 1,
+      "parent_id": null,
+      "model": "",
+      "role": "USER",
+      "status": "FINISHED",
+      "content": "Summarize how Song-dynasty people addressed relatives. See the attached notes.",
+      "thinking_content": null,
+      "thinking_elapsed_secs": null,
+      "files": [
+        {
+          "id": "file-0000-0001",
+          "status": "SUCCESS",
+          "file_name": "song-titles.txt",
+          "previewable": true,
+          "file_size": 2048,
+          "token_usage": 512,
+          "error_code": null,
+          "inserted_at": 1784537240.0,
+          "updated_at": 1784537240.0
+        }
+      ],
+      "search_results": null,
+      "search_status": null,
+      "inserted_at": 1784537270.5
+    },
+    {
+      "message_id": 5,
+      "parent_id": 3,
+      "model": "",
+      "role": "ASSISTANT",
+      "status": "FINISHED",
+      "content": "The most formal address is **尊翁** for another's father.",
+      "thinking_content": "Comparing formality across the candidate terms.",
+      "thinking_elapsed_secs": 3.0,
+      "files": [],
+      "search_results": null,
+      "search_status": null,
+      "inserted_at": 1784537400.0
+    },
+    {
+      "message_id": 2,
+      "parent_id": 1,
+      "model": "",
+      "role": "ASSISTANT",
+      "status": "FINISHED",
+      "content": "In the Song dynasty, children called their father **爹** and mother **娘**.",
+      "thinking_content": "The user wants a summary of Song kinship address; recall the sources.",
+      "thinking_elapsed_secs": 12.5,
+      "files": [],
+      "search_results": [
+        {
+          "url": "https://example.com/song",
+          "title": "Song Honorifics",
+          "snippet": "How Song-era families addressed one another.",
+          "cite_index": 1,
+          "published_at": 1633968000,
+          "site_name": "Example"
+        },
+        {
+          "url": "https://example.com/song",
+          "title": "Song Honorifics (mirror)",
+          "snippet": "Duplicate URL that must be deduped away.",
+          "cite_index": 2,
+          "published_at": 1633968000,
+          "site_name": "Example Mirror"
+        },
+        {
+          "url": "https://example.org/kinship",
+          "title": "Kinship Terms",
+          "snippet": "A glossary of classical kinship terms.",
+          "cite_index": 3,
+          "published_at": null,
+          "site_name": "Kinship"
+        }
+      ],
+      "search_status": "FINISHED",
+      "inserted_at": 1784537290.2
+    },
+    {
+      "message_id": 4,
+      "parent_id": 3,
+      "model": "",
+      "role": "ASSISTANT",
+      "status": "FINISHED",
+      "content": "OLD regenerated answer on an abandoned branch — must be excluded.",
+      "thinking_content": null,
+      "thinking_elapsed_secs": null,
+      "files": [],
+      "search_results": null,
+      "search_status": null,
+      "inserted_at": 1784537360.0
+    }
+  ]
+}

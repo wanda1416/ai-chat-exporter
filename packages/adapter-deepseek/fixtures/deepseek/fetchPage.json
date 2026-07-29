@@ -1,0 +1,31 @@
+{
+  "chat_sessions": [
+    {
+      "id": "00000000-0000-4000-8000-0000000000aa",
+      "seq_id": 206700843,
+      "title": "Song-era forms of address",
+      "title_type": "SYSTEM",
+      "updated_at": 1784537400.973,
+      "pinned": false,
+      "model_type": "default",
+      "agent": "chat",
+      "version": 5,
+      "current_message_id": 5,
+      "inserted_at": 1784537238.043
+    },
+    {
+      "id": "00000000-0000-4000-8000-0000000000bb",
+      "seq_id": 205890248,
+      "title": "Quicksort walkthrough",
+      "title_type": "SYSTEM",
+      "updated_at": 1783727048.022,
+      "pinned": false,
+      "model_type": "expert",
+      "agent": "chat",
+      "version": 46,
+      "current_message_id": 46,
+      "inserted_at": 1782257910.103
+    }
+  ],
+  "has_more": true
+}

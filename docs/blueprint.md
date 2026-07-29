@@ -216,6 +216,32 @@ interface PlatformAdapter {
 
 **通用性结论**：第三个平台在传输（REST）、认证（纯 Cookie）、数据模型（`parentResponseId` 树 + 逐条 model）上又是一组新组合，仍映射到**同一份 Schema v1**、复用**同一套接口与管道**，`schema`/`core` 零改动。由 `packages/adapter-grok` + `fixtures/grok/` 快照测试固化，并经真实账号 dogfood 验证。
 
+## 12. DeepSeek 适配器：真实 API 发现（第四个适配器）
+
+> 2026-07 通过 CDP 登录态浏览器实测确认：DeepSeek 的两个 REST 端点均返回 200、真实数据，并用真实账号完整 dogfood（3 条会话导出，含 46 轮长对话、9 附件、思维链，0 失败）。这是第四种「极端」——认证像 Kimi（**Bearer token**）、传输像 Grok（**规整 REST/JSON**），但数据模型独一档：**完整思维链 + 保留全部编辑/重生分支的消息树**，可见主线需从 `current_message_id` 沿父链回溯得到活跃路径。再次验证 Schema v1 不是过拟合。
+
+**基址与协议**：`https://chat.deepseek.com/api/v0/`，干净 REST/JSON。所有响应是统一**三层信封** `{code, msg, data:{biz_code, biz_msg, biz_data:{...}}}`——`code===0` 且 `data.biz_code===0` 才算成功，真正的 payload 在 `data.biz_data`。前端是 SPA，`pushState` 软导航不触发独立列表请求，需直接 fetch 探测。
+
+**认证（关键）**：**Bearer token**，来自 `localStorage.userToken`（JSON `{value, __version}`，`value` 即 token），请求头 `Authorization: Bearer <value>` + `credentials:"include"`。与 Grok 的纯 Cookie 不同，也与 Kimi 的 JWT 同源但取值路径不同。
+
+**两个端点（比 Grok/Kimi 都简单，详情单端点直出）**：
+
+- **列表**：`GET /chat_session/fetch_page?count=N[&before_seq_id=<seq>]` → `biz_data:{chat_sessions:[{id,seq_id,title,updated_at,inserted_at,current_message_id,...}], has_more}`。游标 = 上一页最后一个 session 的 `seq_id`，参数名 **`before_seq_id`**（其余候选 start_seq_id/cursor/before/offset 全被服务端忽略，实测证明）；按 seq_id 降序，最老会话 seq_id=0，循环到 `has_more:false`。
+- **详情**：`GET /chat/history_messages?chat_session_id={id}` → **单端点返回全部**：`biz_data:{chat_session:{...}, chat_messages:[...]}`，无 Grok/Kimi 的骨架+正文两段式。
+
+**解析要点（直接决定实现）**：
+
+- `role`：`"ASSISTANT"`→assistant、`"SYSTEM"`→system、其余→user；`content` 是纯 Markdown 字符串。
+- **消息树 + 活跃路径（本适配器核心）**：DeepSeek **保留所有编辑/重新生成的分支**。用户可见主线 = 从 `chat_session.current_message_id` 沿 `parent_id` 回溯到 root（`parent_id===null`）再 reverse；被抛弃的重生兄弟分支必须排除。`chat_messages` 数组顺序不保证，靠 `message_id`/`parent_id` 链接（fixture 刻意乱序 `[3,1,5,2,4]` 且埋一个废弃分支 msg4 守护该逻辑），并反推 `childrenIds`。
+- **思维链**：`thinking_content`（assistant 专有，可 null）→ `reasoning.content`；`thinking_elapsed_secs`（float）→ `reasoning.summary`=`Thought for ${round}s`。
+- 时间戳 `inserted_at`/`updated_at` 是**浮点 epoch 秒**，`new Date(Math.round(sec*1000)).toISOString()` 转 ISO 8601。
+- 引用 `search_results[]={url,title,snippet,...}`（可 null）→Citation（按 url 去重）；真实数据里该字段常为 null，引用信息内联在正文 `[reference:N]` 标记中。
+- 附件 `files[]={id,file_name,file_size,...}`→Attachment（`id`/`name`/`sizeBytes`）。
+- 标题：`chat_session.title` 优先，回退列表带入的 meta，再兜底首条 user prompt。
+- `sourceUrl` = `https://chat.deepseek.com/a/chat/s/${id}`。
+
+**通用性结论**：第四个平台在认证（Bearer）、传输（REST/JSON）、数据模型（保留全分支的消息树 + 思维链 + 活跃路径回溯）上又是一组新组合，仍映射到**同一份 Schema v1**、复用**同一套接口与管道**，`schema`/`core` 零改动。由 `packages/adapter-deepseek` + `fixtures/deepseek/` 快照测试固化，并经真实账号 dogfood 验证。
+
 ## 附：产品形态决策
 
 首发采用**核心库 + 多形态**架构：`core` 与形态解耦，v0.1 先出油猴脚本形态（免 token、天然带登录态、安装门槛低），浏览器扩展和 CLI 后续跟进。

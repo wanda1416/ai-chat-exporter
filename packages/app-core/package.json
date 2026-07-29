@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ace/adapter-deepseek": "workspace:*",
     "@ace/adapter-gemini": "workspace:*",
     "@ace/adapter-grok": "workspace:*",
     "@ace/adapter-kimi": "workspace:*",
