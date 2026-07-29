@@ -50,6 +50,15 @@ importers:
         specifier: workspace:*
         version: link:../schema
 
+  packages/adapter-grok:
+    dependencies:
+      '@ace/core':
+        specifier: workspace:*
+        version: link:../core
+      '@ace/schema':
+        specifier: workspace:*
+        version: link:../schema
+
   packages/adapter-kimi:
     dependencies:
       '@ace/core':
@@ -64,6 +73,9 @@ importers:
       '@ace/adapter-gemini':
         specifier: workspace:*
         version: link:../adapter-gemini
+      '@ace/adapter-grok':
+        specifier: workspace:*
+        version: link:../adapter-grok
       '@ace/adapter-kimi':
         specifier: workspace:*
         version: link:../adapter-kimi

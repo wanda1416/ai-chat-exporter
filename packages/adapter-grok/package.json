@@ -1,0 +1,17 @@
+{
+  "name": "@ace/adapter-grok",
+  "version": "0.1.0",
+  "description": "Grok (grok.com) platform adapter.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ace/core": "workspace:*",
+    "@ace/schema": "workspace:*"
+  }
+}

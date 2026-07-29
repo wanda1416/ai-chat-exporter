@@ -184,6 +184,38 @@ interface PlatformAdapter {
 - **确定性校验**：落盘后不要靠肉眼看控制台（会被 GBK 假乱码误导）——页面内对每个文件内容算 SHA-256，与磁盘 `Get-FileHash` 逐一比对，match 数 = 文件数才算通过。
 - **规模提示**：实测账号内 `ListFeeds` 全量分页得 1602 条会话——全量导出需分批（单次 eval 扛不住长时间运行），也印证 v0.2 CLI 增量备份的必要性。
 
+## 11. Grok 适配器：真实 API 发现（第三个适配器）
+
+> 2026-07 通过 CDP 登录态浏览器实测确认：Grok 的三个 REST 端点均返回 200、真实数据，并用真实账号完整 dogfood（3 条会话导出，含 18 轮长对话、引用、附件，0 失败）。这是第三种「极端」——认证比 Kimi/Gemini 都简单（**纯 Cookie，无 token**），数据比 Gemini 干净（**规整 REST/JSON**），进一步验证 Schema v1 不是对前两家的过拟合。
+
+**基址与协议**：`https://grok.com/rest/`，干净 REST/JSON。Grok 前端是 **Remix 应用**——会话列表首屏 SSR 内联，只有客户端软导航（点侧栏另一条会话、或命令菜单搜索）才触发独立 REST 请求；直接刷新页面抓不到列表请求，需软导航或直接 fetch 探测。
+
+**认证（关键，最简单）**：**纯 Cookie 会话**（`credentials: "include"`），无需 `Authorization: Bearer`、无需 XSRF token、无需任何自定义 header。油猴/扩展在 `grok.com` 源内运行天然带 Cookie，契合。
+
+**三个核心端点**：
+
+| 端点 | 方法 | 请求 | 响应 |
+|---|---|---|---|
+| 列表 | `GET /rest/app-chat/conversations?pageSize=N[&pageToken=<cursor>]` | 游标翻页 | `{conversations:[{conversationId,title,starred,createTime,modifyTime}], nextPageToken, textSearchMatches}` |
+| 消息树骨架 | `GET /rest/app-chat/conversations/{id}/response-node` | — | `{responseNodes:[{responseId,sender,parentResponseId}], inflightResponses}`（时序，root first） |
+| 消息正文 | `POST /rest/app-chat/conversations/{id}/load-responses` | `{responseIds:[...]}` | `{responses:[{responseId,message,sender,createTime,parentResponseId,model,webSearchResults,citedWebSearchResults,fileAttachmentAssetMetadata,…}]}` |
+
+**分页**：游标式。`nextPageToken` 即上一页最后一个 `conversationId`，作为下一页的 `pageToken` 回传；实测第二页无重叠，空/缺失即末页。
+
+**「查看全部」按钮 = 命令菜单，非独立数据源**：点击只触发 `opened_command_menu` 埋点；其搜索框走的是**同一个** `conversations` 端点，仅多带 `searchQuery=` 过滤参数。适配器翻不带 `searchQuery` 的完整列表即覆盖全部会话，无需单独适配。
+
+**解析要点（直接决定实现）**：
+
+- `sender`：`"human"`→user、`"ASSISTANT"`→assistant（大小写不敏感处理）；`message` 是纯 Markdown 字符串。
+- **`load-responses` 不保证按请求顺序返回**（与 Kimi 同款坑）——必须按 `createTime` 稳定重排；fixture 刻意做成乱序样本守护该逻辑。
+- 树结构靠 `parentResponseId`（root 缺失该键 → `parentId` 不赋值，保持 undefined），像 Kimi 一样反推 `childrenIds`。
+- `model` 是**逐条消息级**（如 `grok-3`/`grok-4`），仅助手消息保留；会话级 model 取最后一条助手的。
+- 引用 `citedWebSearchResults` 优先、回退 `webSearchResults`，`{url,title,preview}`→Citation（按 url 去重）。
+- 附件 `fileAttachmentAssetMetadata[]={assetId,mimeType,name,sizeBytes}`→Attachment。
+- 标题：详情端点**不含**，从列表带入或用首条 user prompt 兜底（与 Gemini 同策略）。
+
+**通用性结论**：第三个平台在传输（REST）、认证（纯 Cookie）、数据模型（`parentResponseId` 树 + 逐条 model）上又是一组新组合，仍映射到**同一份 Schema v1**、复用**同一套接口与管道**，`schema`/`core` 零改动。由 `packages/adapter-grok` + `fixtures/grok/` 快照测试固化，并经真实账号 dogfood 验证。
+
 ## 附：产品形态决策
 
 首发采用**核心库 + 多形态**架构：`core` 与形态解耦，v0.1 先出油猴脚本形态（免 token、天然带登录态、安装门槛低），浏览器扩展和 CLI 后续跟进。

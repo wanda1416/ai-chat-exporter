@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@ace/adapter-gemini": "workspace:*",
+    "@ace/adapter-grok": "workspace:*",
     "@ace/adapter-kimi": "workspace:*",
     "@ace/core": "workspace:*",
     "@ace/exporter-json": "workspace:*",

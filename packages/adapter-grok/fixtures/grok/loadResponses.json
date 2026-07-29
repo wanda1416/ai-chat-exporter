@@ -1,0 +1,72 @@
+{
+  "responses": [
+    {
+      "responseId": "11111111-0000-4000-8000-000000000002",
+      "message": "Tides are the rise and fall of sea levels caused by the gravitational pull of the Moon and Sun on Earth's oceans.\n\n- The Moon's gravity is the main driver.\n- Two bulges form: one facing the Moon, one on the opposite side.",
+      "sender": "ASSISTANT",
+      "createTime": "2026-07-01T10:00:05.000Z",
+      "parentResponseId": "11111111-0000-4000-8000-000000000001",
+      "model": "grok-3",
+      "webSearchResults": [],
+      "citedWebSearchResults": [],
+      "fileAttachmentAssetMetadata": []
+    },
+    {
+      "responseId": "11111111-0000-4000-8000-000000000004",
+      "message": "Spring tides happen at the new and full moon, when the Sun and Moon align and their pulls add up. Neap tides happen at the quarter moons.",
+      "sender": "ASSISTANT",
+      "createTime": "2026-07-01T10:01:10.000Z",
+      "parentResponseId": "11111111-0000-4000-8000-000000000003",
+      "model": "grok-4",
+      "webSearchResults": [
+        {
+          "url": "https://example.com/tides",
+          "title": "Understanding Tides",
+          "preview": "A primer on spring and neap tides."
+        },
+        {
+          "url": "https://example.com/tides",
+          "title": "Understanding Tides (dup)",
+          "preview": "Duplicate url should be deduped."
+        }
+      ],
+      "citedWebSearchResults": [
+        {
+          "url": "https://example.com/tides",
+          "title": "Understanding Tides",
+          "preview": "A primer on spring and neap tides."
+        }
+      ],
+      "fileAttachmentAssetMetadata": []
+    },
+    {
+      "responseId": "11111111-0000-4000-8000-000000000001",
+      "message": "How do tides form? I attached a diagram.",
+      "sender": "human",
+      "createTime": "2026-07-01T10:00:00.000Z",
+      "model": "grok-3",
+      "webSearchResults": [],
+      "citedWebSearchResults": [],
+      "fileAttachmentAssetMetadata": [
+        {
+          "assetId": "asset-0000-0001",
+          "mimeType": "image/png",
+          "name": "tides-diagram.png",
+          "sizeBytes": 20480,
+          "createTime": "2026-07-01T09:59:50.000Z"
+        }
+      ]
+    },
+    {
+      "responseId": "11111111-0000-4000-8000-000000000003",
+      "message": "What causes spring tides versus neap tides?",
+      "sender": "human",
+      "createTime": "2026-07-01T10:01:00.000Z",
+      "parentResponseId": "11111111-0000-4000-8000-000000000002",
+      "model": "grok-3",
+      "webSearchResults": [],
+      "citedWebSearchResults": [],
+      "fileAttachmentAssetMetadata": []
+    }
+  ]
+}

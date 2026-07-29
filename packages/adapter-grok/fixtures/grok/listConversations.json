@@ -1,0 +1,32 @@
+{
+  "conversations": [
+    {
+      "conversationId": "00000000-0000-4000-8000-000000000001",
+      "title": "How do tides form?",
+      "starred": false,
+      "createTime": "2026-07-01T10:00:00.000000Z",
+      "modifyTime": "2026-07-01T10:01:10.000Z",
+      "systemPromptName": "",
+      "temporary": false,
+      "mediaTypes": [],
+      "workspaces": [],
+      "taskResult": {},
+      "latestAssetMetadata": null
+    },
+    {
+      "conversationId": "00000000-0000-4000-8000-000000000002",
+      "title": "Quicksort in Rust",
+      "starred": true,
+      "createTime": "2026-06-28T08:30:00.000000Z",
+      "modifyTime": "2026-06-28T08:45:12.000Z",
+      "systemPromptName": "",
+      "temporary": false,
+      "mediaTypes": [],
+      "workspaces": [],
+      "taskResult": {},
+      "latestAssetMetadata": null
+    }
+  ],
+  "nextPageToken": "00000000-0000-4000-8000-000000000002",
+  "textSearchMatches": []
+}

@@ -19,14 +19,14 @@ function emitManifest(): Plugin {
     writeBundle(options) {
       const manifest = {
         manifest_version: 3,
-        name: "AI Chat Exporter (Kimi & Gemini)",
+        name: "AI Chat Exporter (Kimi, Gemini & Grok)",
         version: pkg.version,
         description:
-          "Batch-export your Kimi & Gemini conversations to Markdown + JSON, zipped. Runs entirely in your browser.",
+          "Batch-export your Kimi, Gemini & Grok conversations to Markdown + JSON, zipped. Runs entirely in your browser.",
         homepage_url: "https://github.com/wanda1416/ai-chat-exporter",
         content_scripts: [
           {
-            matches: ["https://www.kimi.com/*", "https://gemini.google.com/*"],
+            matches: ["https://www.kimi.com/*", "https://gemini.google.com/*", "https://grok.com/*"],
             js: ["content.js"],
             world: "MAIN",
             run_at: "document_idle",

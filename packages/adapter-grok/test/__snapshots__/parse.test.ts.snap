@@ -1,0 +1,95 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`grok adapter parsing (golden fixtures) > assembles a Conversation from response-node + load-responses 1`] = `
+{
+  "attachments": [
+    {
+      "id": "asset-0000-0001",
+      "mimeType": "image/png",
+      "name": "tides-diagram.png",
+      "sizeBytes": 20480,
+    },
+  ],
+  "createdAt": "2026-07-01T10:00:00.000000Z",
+  "id": "00000000-0000-4000-8000-000000000001",
+  "messages": [
+    {
+      "attachments": [
+        "asset-0000-0001",
+      ],
+      "childrenIds": [
+        "11111111-0000-4000-8000-000000000002",
+      ],
+      "content": [
+        {
+          "text": "How do tides form? I attached a diagram.",
+          "type": "text",
+        },
+      ],
+      "id": "11111111-0000-4000-8000-000000000001",
+      "role": "user",
+      "timestamp": "2026-07-01T10:00:00.000Z",
+    },
+    {
+      "childrenIds": [
+        "11111111-0000-4000-8000-000000000003",
+      ],
+      "content": [
+        {
+          "text": "Tides are the rise and fall of sea levels caused by the gravitational pull of the Moon and Sun on Earth's oceans.
+
+- The Moon's gravity is the main driver.
+- Two bulges form: one facing the Moon, one on the opposite side.",
+          "type": "text",
+        },
+      ],
+      "id": "11111111-0000-4000-8000-000000000002",
+      "model": "grok-3",
+      "parentId": "11111111-0000-4000-8000-000000000001",
+      "role": "assistant",
+      "timestamp": "2026-07-01T10:00:05.000Z",
+    },
+    {
+      "childrenIds": [
+        "11111111-0000-4000-8000-000000000004",
+      ],
+      "content": [
+        {
+          "text": "What causes spring tides versus neap tides?",
+          "type": "text",
+        },
+      ],
+      "id": "11111111-0000-4000-8000-000000000003",
+      "parentId": "11111111-0000-4000-8000-000000000002",
+      "role": "user",
+      "timestamp": "2026-07-01T10:01:00.000Z",
+    },
+    {
+      "citations": [
+        {
+          "snippet": "A primer on spring and neap tides.",
+          "title": "Understanding Tides",
+          "url": "https://example.com/tides",
+        },
+      ],
+      "content": [
+        {
+          "text": "Spring tides happen at the new and full moon, when the Sun and Moon align and their pulls add up. Neap tides happen at the quarter moons.",
+          "type": "text",
+        },
+      ],
+      "id": "11111111-0000-4000-8000-000000000004",
+      "model": "grok-4",
+      "parentId": "11111111-0000-4000-8000-000000000003",
+      "role": "assistant",
+      "timestamp": "2026-07-01T10:01:10.000Z",
+    },
+  ],
+  "model": "grok-4",
+  "platform": "grok",
+  "schemaVersion": "1",
+  "sourceUrl": "https://grok.com/c/00000000-0000-4000-8000-000000000001",
+  "title": "How do tides form?",
+  "updatedAt": "2026-07-01T10:01:10.000Z",
+}
+`;

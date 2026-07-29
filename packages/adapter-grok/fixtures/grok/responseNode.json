@@ -1,0 +1,24 @@
+{
+  "responseNodes": [
+    {
+      "responseId": "11111111-0000-4000-8000-000000000001",
+      "sender": "human"
+    },
+    {
+      "responseId": "11111111-0000-4000-8000-000000000002",
+      "sender": "ASSISTANT",
+      "parentResponseId": "11111111-0000-4000-8000-000000000001"
+    },
+    {
+      "responseId": "11111111-0000-4000-8000-000000000003",
+      "sender": "human",
+      "parentResponseId": "11111111-0000-4000-8000-000000000002"
+    },
+    {
+      "responseId": "11111111-0000-4000-8000-000000000004",
+      "sender": "ASSISTANT",
+      "parentResponseId": "11111111-0000-4000-8000-000000000003"
+    }
+  ],
+  "inflightResponses": []
+}
