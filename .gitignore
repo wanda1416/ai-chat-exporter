@@ -5,8 +5,11 @@ vendor/
 node_modules/
 .pnpm-store/
 
-# Build output
+# Build output (except the distributable userscript, served via raw URL)
 dist/
+!apps/userscript/dist/
+apps/userscript/dist/*
+!apps/userscript/dist/ai-chat-exporter.user.js
 build/
 *.tsbuildinfo
 

@@ -46,9 +46,16 @@ export default defineConfig({
         license: "MIT",
         homepageURL: "https://github.com/wanda1416/ai-chat-exporter",
         supportURL: "https://github.com/wanda1416/ai-chat-exporter/issues",
+        downloadURL:
+          "https://raw.githubusercontent.com/wanda1416/ai-chat-exporter/master/apps/userscript/dist/ai-chat-exporter.user.js",
+        updateURL:
+          "https://raw.githubusercontent.com/wanda1416/ai-chat-exporter/master/apps/userscript/dist/ai-chat-exporter.user.js",
         match: ["https://www.kimi.com/*", "https://gemini.google.com/*"],
         grant: "none",
         "run-at": "document-idle",
+      },
+      build: {
+        fileName: "ai-chat-exporter.user.js",
       },
     }),
   ],
