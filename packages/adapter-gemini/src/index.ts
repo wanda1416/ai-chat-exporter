@@ -8,10 +8,13 @@
 export { GeminiAdapter } from "./adapter.js";
 export { GeminiClient, type GeminiClientOptions } from "./client.js";
 export {
+  detailNextPageToken,
+  detailTurns,
   extractRpcPayload,
   nextPageToken,
   parseConversationList,
   PLATFORM,
   toConversation,
+  turnResponseId,
 } from "./parse.js";
 export type * from "./types.js";

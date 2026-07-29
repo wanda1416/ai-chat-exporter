@@ -2,7 +2,7 @@
   "name": "@ace/userscript",
   "version": "0.1.0",
   "private": true,
-  "description": "Tampermonkey userscript — the v0.1 shipping form for Kimi export.",
+  "description": "Tampermonkey userscript — the v0.1 shipping form for Kimi/Gemini export.",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@ace/adapter-gemini": "workspace:*",
     "@ace/adapter-kimi": "workspace:*",
     "@ace/core": "workspace:*",
     "@ace/exporter-json": "workspace:*",

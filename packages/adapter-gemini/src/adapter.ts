@@ -1,7 +1,16 @@
 import type { Conversation, ConversationMeta } from "@ace/schema";
 import type { PlatformAdapter } from "@ace/core";
 import { GeminiClient, type GeminiClientOptions } from "./client.js";
-import { nextPageToken, parseConversationList, PLATFORM, toConversation } from "./parse.js";
+import {
+  detailNextPageToken,
+  detailTurns,
+  nextPageToken,
+  parseConversationList,
+  PLATFORM,
+  toConversation,
+  turnResponseId,
+} from "./parse.js";
+import type { Json } from "./types.js";
 
 const MAX_PAGES = 1000; // safety valve against a mis-parsed token looping forever
 
@@ -43,7 +52,29 @@ export class GeminiAdapter implements PlatformAdapter {
   }
 
   async fetchConversation(id: string): Promise<Conversation> {
-    const payload = await this.client.getConversation(id);
-    return toConversation(id, payload, this.titles.get(id));
+    // The detail RPC paginates like the list: one page is newest-first turns,
+    // payload[1] is the continuation token into older turns. Walk every page
+    // so long conversations export in full, deduping by turn response id in
+    // case pages overlap. Turns are reassembled into one payload-shaped array
+    // and handed to `toConversation`, which sorts them oldest-first.
+    const allTurns: unknown[] = [];
+    const seen = new Set<string>();
+    let pageToken: string | undefined;
+
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const payload = await this.client.getConversation(id, pageToken);
+      const turns = detailTurns(payload);
+      for (const turn of turns) {
+        const key = turnResponseId(turn);
+        if (key && seen.has(key)) continue;
+        if (key) seen.add(key);
+        allTurns.push(turn);
+      }
+      pageToken = detailNextPageToken(payload);
+      if (!pageToken || turns.length === 0) break;
+    }
+
+    const combined: Json = [allTurns as Json, null, null, []];
+    return toConversation(id, combined, this.titles.get(id));
   }
 }

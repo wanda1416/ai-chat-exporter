@@ -105,6 +105,32 @@ export function nextPageToken(payload: Json): string | undefined {
 
 // --- Detail (hNvQHb) --------------------------------------------------------
 
+/** The turn array of one detail page. */
+export function detailTurns(payload: Json): unknown[] {
+  return asArray(at(payload, 0));
+}
+
+/**
+ * Continuation token for *older* turns, or undefined when the conversation is
+ * fully loaded. Lives at payload[1], mirroring the list RPC.
+ */
+export function detailNextPageToken(payload: Json): string | undefined {
+  return asString(at(payload, 1));
+}
+
+/** A turn's stable response id (turn[0][1]), used to dedupe across pages. */
+export function turnResponseId(turn: unknown): string | undefined {
+  return asString(at(at(turn, 0), 1));
+}
+
+/** A turn's timestamp (turn[4] = [seconds, nanos]) as a sortable number. */
+function turnTime(turn: unknown): number | undefined {
+  const seconds = at(at(turn, 4), 0);
+  if (typeof seconds !== "number") return undefined;
+  const nanos = at(at(turn, 4), 1);
+  return seconds + (typeof nanos === "number" ? nanos / 1e9 : 0);
+}
+
 /** Reads the selected candidate's markdown text out of a turn. */
 function selectedMarkdown(candidatesBlock: unknown): string {
   const candidates = asArray(at(candidatesBlock, 0));
@@ -156,7 +182,14 @@ export function toConversation(
   payload: Json,
   title?: string,
 ): Conversation {
-  const turns = asArray(at(payload, 0));
+  // Live pages arrive newest-first (the web UI renders the tail of a chat
+  // first); an export reads top-down, so reorder turns oldest-first by their
+  // timestamp. Turns without one keep their relative position (stable sort).
+  const turns = [...detailTurns(payload)].sort((a, b) => {
+    const ta = turnTime(a);
+    const tb = turnTime(b);
+    return ta !== undefined && tb !== undefined ? ta - tb : 0;
+  });
   const messages = turns.flatMap(parseTurn);
 
   const firstUserText = messages.find((m) => m.role === "user")?.content.find(

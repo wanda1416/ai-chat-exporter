@@ -13,7 +13,7 @@ Most existing tools export one conversation at a time and only produce Markdown.
 
 ## Status
 
-**v0.1 — alpha.** The core pipeline, Schema v1, and the Kimi adapter are working and have been verified end-to-end against a live account (a full pipeline run exported real conversations to disk, byte-verified by SHA-256). A second adapter (Gemini) exists to prove the Schema and pipeline aren't overfit to one platform.
+**v0.1 — alpha.** The core pipeline, Schema v1, and both adapters (Kimi, Gemini) are working end-to-end in the shipping userscript, verified against live accounts (real conversations exported to disk; the Kimi run was byte-verified by SHA-256). The two platforms are deliberately opposite extremes — clean JSON vs. `batchexecute` positional arrays — proving the Schema and pipeline aren't overfit to one platform.
 
 This is honest-status software: the platform matrix below marks a **last-verified date** rather than a permanent ✅, because private APIs change without notice.
 
@@ -22,13 +22,15 @@ This is honest-status software: the platform matrix below marks a **last-verifie
 | Platform | Transport | Auth | Status | Last verified |
 |---|---|---|---|---|
 | **Kimi** (`kimi.com`) | ConnectRPC / JSON | `Authorization: Bearer` (localStorage JWT) | ✅ Working (shipping form) | 2026-07 |
-| **Gemini** (`gemini.google.com`) | `batchexecute` | Cookie + XSRF token | 🧪 Adapter validated (fixtures + tests) | 2026-07 |
+| **Gemini** (`gemini.google.com`) | `batchexecute` | Cookie + XSRF token | ✅ Working (shipping form) ¹ | 2026-07 |
+
+¹ Gemini conversation detail is fetched 100 turns per request; for conversations beyond that, the older-turns continuation token is inferred from the list RPC's symmetry and still being validated against a live long chat.
 
 Want another platform? See [Writing an adapter](#writing-an-adapter).
 
-## Install & use (Kimi)
+## Install & use (Kimi & Gemini)
 
-The v0.1 shipping form is a **Tampermonkey userscript** — no token setup, runs in your logged-in session.
+The v0.1 shipping form is a single **Tampermonkey userscript** covering both platforms — no token setup, runs in your logged-in session and picks the right adapter per site.
 
 1. Install [Tampermonkey](https://www.tampermonkey.net/) in your browser.
 2. Build the userscript:
@@ -38,8 +40,14 @@ The v0.1 shipping form is a **Tampermonkey userscript** — no token setup, runs
    ```
    The bundle is emitted to `apps/userscript/dist/@ace/userscript.user.js`.
 3. Open that `.user.js` file in the browser (or drag it into the Tampermonkey dashboard) and confirm the install.
-4. Go to [kimi.com](https://www.kimi.com/), log in, and click the **“Export all chats”** button (bottom-right).
-5. A `kimi-export-YYYY-MM-DD.zip` downloads, containing one `.md` and one `.json` per conversation under a `kimi/` folder.
+4. Go to [kimi.com](https://www.kimi.com/) **or** [gemini.google.com](https://gemini.google.com/), log in, and click the **“Export all chats”** button (bottom-right).
+5. A dialog lets you pick the conversation range to export (1-based, inclusive — e.g. 1–100; leave “to” empty for everything) and optionally load the total conversation count.
+6. A `<platform>-export-YYYY-MM-DD.zip` downloads, with Markdown and JSON kept in separate folders:
+   ```
+   kimi/            (or gemini/)
+   ├── markdown/    one .md per conversation
+   └── json/        one .json per conversation
+   ```
 
 Requests are throttled (500 ms each) so the export never puts pressure on the platform.
 
@@ -126,8 +134,8 @@ Implement `PlatformAdapter` in a new `packages/adapter-<name>/`, mapping the pla
 
 | Version | Scope |
 |---|---|
-| **v0.1** | Schema v1 + Kimi adapter + MD/JSON/ZIP exporters + userscript |
-| v0.2 | CLI form (incremental backup) + a second high-demand platform |
+| **v0.1** | Schema v1 + Kimi & Gemini adapters + MD/JSON/ZIP exporters + userscript (range dialog) |
+| v0.2 | CLI form (incremental backup) + a third high-demand platform |
 | v0.3 | Adapter guide + fixture anonymizer + CONTRIBUTING — open community adapters |
 | v0.4+ | Browser-extension form, Obsidian exporter, more platforms |
 

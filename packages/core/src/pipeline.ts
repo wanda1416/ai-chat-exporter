@@ -13,11 +13,24 @@ export interface ExportProgress {
   total: number;
 }
 
+export interface ExportRange {
+  /** First conversation to include, 1-based. Defaults to 1. */
+  from?: number;
+  /** Last conversation to include, inclusive. Defaults to the end of the list. */
+  to?: number;
+}
+
 export interface ExportOptions {
   adapter: PlatformAdapter;
   exporters: Exporter[];
   /** Restrict to these conversation ids; defaults to everything listed. */
   ids?: string[];
+  /**
+   * Restrict to a positional slice of the listing (1-based, both ends
+   * inclusive), applied after the `ids` filter. Listing stops early once the
+   * upper bound is reached, so a small range never pages the full history.
+   */
+  range?: ExportRange;
   /** Minimum spacing between conversation fetches, in ms. Default 500. */
   throttleMs?: number;
   onProgress?: (progress: ExportProgress) => void;
@@ -37,16 +50,22 @@ export interface ExportResult {
  * thrown, so a single broken conversation never aborts a full-history export.
  */
 export async function exportConversations(options: ExportOptions): Promise<ExportResult> {
-  const { adapter, exporters, ids, throttleMs = 500, onProgress, onError } = options;
+  const { adapter, exporters, ids, range, throttleMs = 500, onProgress, onError } = options;
 
   const metas: ConversationMeta[] = [];
   const wanted = ids ? new Set(ids) : null;
+  const from = Math.max(1, Math.floor(range?.from ?? 1));
+  const to = Math.floor(range?.to ?? Infinity);
 
+  let position = 0;
   onProgress?.({ phase: "list", completed: 0, total: 0 });
   for await (const meta of adapter.listConversations()) {
     if (wanted && !wanted.has(meta.id)) continue;
+    position += 1;
+    if (position < from) continue;
     metas.push(meta);
     onProgress?.({ phase: "list", completed: 0, total: metas.length });
+    if (position >= to) break;
   }
 
   const fetchOne = throttled((id: string) => adapter.fetchConversation(id), throttleMs);

@@ -3,6 +3,8 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { Conversation } from "@ace/schema";
 import {
+  detailNextPageToken,
+  detailTurns,
   extractRpcPayload,
   nextPageToken,
   parseConversationList,
@@ -105,5 +107,26 @@ describe("gemini adapter parsing (golden fixtures)", () => {
     const payload = loadFixture("getConversation.json");
     const conversation = toConversation(CONVERSATION_ID, payload);
     expect(conversation.title).toBe("开源项目命名用 _ 还是 - 有什么讲究？");
+  });
+
+  it("reorders newest-first live pages oldest-first (live hNvQHb is reversed)", () => {
+    const payload = loadFixture("getConversation.json");
+    // Simulate the live response: same turns, newest-first.
+    const reversed: Json = [[...detailTurns(payload)].reverse() as Json, null, null, []];
+
+    const conversation = toConversation(CONVERSATION_ID, reversed);
+    const expected = toConversation(CONVERSATION_ID, payload);
+    expect(conversation.messages).toEqual(expected.messages);
+    expect(conversation.messages[0].role).toBe("user");
+    expect(conversation.createdAt! <= conversation.updatedAt!).toBe(true);
+  });
+
+  it("exposes the detail continuation token when present", () => {
+    const payload = loadFixture("getConversation.json");
+    // The capture is a fully-loaded short chat: no token.
+    expect(detailNextPageToken(payload)).toBeUndefined();
+    // A longer chat surfaces the older-turns token at payload[1].
+    const paged: Json = [detailTurns(payload) as Json, "OLDER_TURNS_TOKEN", null, []];
+    expect(detailNextPageToken(paged)).toBe("OLDER_TURNS_TOKEN");
   });
 });

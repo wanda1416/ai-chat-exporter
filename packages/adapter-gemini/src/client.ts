@@ -3,6 +3,9 @@ import { RPC_DETAIL, RPC_LIST, type Json } from "./types.js";
 
 const BATCHEXECUTE_URL = "https://gemini.google.com/_/BardChatUi/data/batchexecute";
 const LIST_PAGE_SIZE = 20;
+// Turns per detail page. The web UI requests 10 (it lazy-loads older turns on
+// scroll); an export wants whole conversations, so ask for far more per call.
+const DETAIL_PAGE_SIZE = 100;
 
 /**
  * Ambient shape of `window.WIZ_global_data`, the bootstrap blob Gemini injects
@@ -100,9 +103,13 @@ export class GeminiClient {
     return this.call(RPC_LIST, [LIST_PAGE_SIZE, pageToken ?? null, [0, null, 1]]);
   }
 
-  /** All turns of a single conversation. Accepts ids with or without `c_`. */
-  getConversation(conversationId: string): Promise<Json> {
+  /**
+   * One page of a conversation's turns, newest-first. Accepts ids with or
+   * without `c_`. `pageToken` continues into older turns (same continuation
+   * mechanism as the list RPC; token surfaces at payload[1]).
+   */
+  getConversation(conversationId: string, pageToken?: string): Promise<Json> {
     const cid = conversationId.startsWith("c_") ? conversationId : `c_${conversationId}`;
-    return this.call(RPC_DETAIL, [cid, 10, null, 1, [0], [4], null, 1]);
+    return this.call(RPC_DETAIL, [cid, DETAIL_PAGE_SIZE, pageToken ?? null, 1, [0], [4], null, 1]);
   }
 }

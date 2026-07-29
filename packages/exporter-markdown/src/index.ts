@@ -10,7 +10,7 @@ export function markdownExporter(): Exporter {
     extension: "md",
     export(conversation: Conversation): ExportedFile {
       return {
-        path: `${conversation.platform}/${conversationBaseName(conversation)}.md`,
+        path: `${conversation.platform}/markdown/${conversationBaseName(conversation)}.md`,
         content: renderMarkdown(conversation),
         mimeType: "text/markdown",
       };

@@ -20,6 +20,9 @@ importers:
 
   apps/userscript:
     dependencies:
+      '@ace/adapter-gemini':
+        specifier: workspace:*
+        version: link:../../packages/adapter-gemini
       '@ace/adapter-kimi':
         specifier: workspace:*
         version: link:../../packages/adapter-kimi

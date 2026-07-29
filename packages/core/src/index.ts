@@ -9,6 +9,7 @@ export type { Exporter, ExportedFile } from "./exporter.js";
 export {
   exportConversations,
   type ExportOptions,
+  type ExportRange,
   type ExportResult,
   type ExportProgress,
 } from "./pipeline.js";

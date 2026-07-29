@@ -2,7 +2,7 @@ import type { Conversation } from "@ace/schema";
 
 /** A single produced artifact. `content` is text for MD/JSON, bytes for binary. */
 export interface ExportedFile {
-  /** Relative path inside the output bundle, e.g. "kimi/2024-01-topic.md". */
+  /** Relative path inside the output bundle, e.g. "kimi/markdown/2024-01-topic.md". */
   path: string;
   content: string | Uint8Array;
   mimeType: string;

@@ -13,7 +13,7 @@
 
 ## 项目状态
 
-**v0.1 —— alpha。** 核心管道、Schema v1 与 Kimi 适配器均已可用，并已针对真实账号做过端到端验证（一次完整管道运行把真实对话导出到磁盘，并经 SHA-256 逐字节校验）。第二个适配器（Gemini）用于证明 Schema 与管道没有过拟合到单一平台。
+**v0.1 —— alpha。** 核心管道、Schema v1 与两个适配器（Kimi、Gemini）均已在发行的油猴脚本中端到端可用，并经真实账号验证（真实对话导出到磁盘；Kimi 那次运行经 SHA-256 逐字节校验）。两个平台刻意选了两个极端——干净的 JSON 对比 `batchexecute` 位置数组——证明 Schema 与管道没有过拟合到单一平台。
 
 这是一款「诚实状态」的软件：下方平台矩阵标注的是**最近验证日期**，而非永久的 ✅，因为私有 API 会在没有通知的情况下变动。
 
@@ -22,13 +22,15 @@
 | 平台 | 传输 | 认证 | 状态 | 最近验证 |
 |---|---|---|---|---|
 | **Kimi** (`kimi.com`) | ConnectRPC / JSON | `Authorization: Bearer`（localStorage JWT） | ✅ 可用（发行形态） | 2026-07 |
-| **Gemini** (`gemini.google.com`) | `batchexecute` | Cookie + XSRF token | 🧪 适配器已验证（fixture + 测试） | 2026-07 |
+| **Gemini** (`gemini.google.com`) | `batchexecute` | Cookie + XSRF token | ✅ 可用（发行形态）¹ | 2026-07 |
+
+¹ Gemini 对话详情每次请求拉取 100 轮；超过 100 轮的对话依赖“更旧轮次”续页 token，该 token 位置系从列表 RPC 的对称结构推断，尚待真实超长对话验证。
 
 想要其他平台？见[编写适配器](#编写适配器)。
 
-## 安装与使用（Kimi）
+## 安装与使用（Kimi 与 Gemini）
 
-v0.1 的发行形态是一个 **Tampermonkey 油猴脚本**——无需配置 token，运行在你已登录的会话中。
+v0.1 的发行形态是一个同时覆盖两个平台的 **Tampermonkey 油猴脚本**——无需配置 token，运行在你已登录的会话中，并按站点自动选择对应适配器。
 
 1. 在浏览器中安装 [Tampermonkey](https://www.tampermonkey.net/)。
 2. 构建油猴脚本：
@@ -38,8 +40,14 @@ v0.1 的发行形态是一个 **Tampermonkey 油猴脚本**——无需配置 to
    ```
    产物会输出到 `apps/userscript/dist/@ace/userscript.user.js`。
 3. 在浏览器中打开该 `.user.js` 文件（或把它拖进 Tampermonkey 面板）并确认安装。
-4. 打开 [kimi.com](https://www.kimi.com/) 登录，点击右下角的 **“Export all chats”** 按钮。
-5. 会下载一个 `kimi-export-YYYY-MM-DD.zip`，其中在 `kimi/` 目录下每条对话包含一个 `.md` 和一个 `.json`。
+4. 打开 [kimi.com](https://www.kimi.com/) **或** [gemini.google.com](https://gemini.google.com/) 登录，点击右下角的 **“Export all chats”** 按钮。
+5. 弹出的对话框可选择导出的对话区间（从 1 开始、含首尾，如 1–100；“to” 留空则导出全部），也可按需加载对话总数。
+6. 会下载一个 `<platform>-export-YYYY-MM-DD.zip`，Markdown 与 JSON 分目录存放：
+   ```
+   kimi/            （或 gemini/）
+   ├── markdown/    每条对话一个 .md
+   └── json/        每条对话一个 .json
+   ```
 
 请求做了节流（每次 500 ms），因此导出不会对平台造成压力。
 
@@ -126,8 +134,8 @@ pnpm schema:json      # 重新生成发布用的 JSON Schema
 
 | 版本 | 范围 |
 |---|---|
-| **v0.1** | Schema v1 + Kimi 适配器 + MD/JSON/ZIP 导出器 + 油猴脚本 |
-| v0.2 | CLI 形态（增量备份）+ 第二个高需求平台 |
+| **v0.1** | Schema v1 + Kimi 与 Gemini 适配器 + MD/JSON/ZIP 导出器 + 油猴脚本（区间对话框） |
+| v0.2 | CLI 形态（增量备份）+ 第三个高需求平台 |
 | v0.3 | 适配器指南 + fixture 匿名化工具 + CONTRIBUTING —— 开放社区适配器 |
 | v0.4+ | 浏览器扩展形态、Obsidian 导出器、更多平台 |
 

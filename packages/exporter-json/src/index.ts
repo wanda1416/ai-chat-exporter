@@ -12,7 +12,7 @@ export function jsonExporter(): Exporter {
     extension: "json",
     export(conversation: Conversation): ExportedFile {
       return {
-        path: `${conversation.platform}/${conversationBaseName(conversation)}.json`,
+        path: `${conversation.platform}/json/${conversationBaseName(conversation)}.json`,
         content: JSON.stringify(conversation, null, 2) + "\n",
         mimeType: "application/json",
       };
