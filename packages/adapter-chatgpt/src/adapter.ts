@@ -1,5 +1,5 @@
-import type { Conversation, ConversationMeta } from "@ace/schema";
-import type { PlatformAdapter } from "@ace/core";
+import type { Attachment, Conversation, ConversationMeta } from "@ace/schema";
+import type { AttachmentPayload, PlatformAdapter } from "@ace/core";
 import { ChatGPTClient, type ChatGPTClientOptions } from "./client.js";
 import { nextOffset, parseConversationList, PLATFORM, toConversation } from "./parse.js";
 
@@ -52,5 +52,14 @@ export class ChatGPTAdapter implements PlatformAdapter {
       createdAt: meta?.createdAt,
       updatedAt: meta?.updatedAt,
     });
+  }
+
+  /**
+   * Resolves attachment bytes via the files download endpoint — covers user
+   * uploads (`file-…`) and generated images (`sediment://file_…` pointers),
+   * neither of which carries a direct URL in the conversation payload.
+   */
+  async fetchAttachment(attachment: Attachment): Promise<AttachmentPayload | null> {
+    return this.client.downloadFile(attachment.id);
   }
 }

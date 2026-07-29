@@ -1,4 +1,4 @@
-import type { Conversation, ContentPart, Message } from "@ace/schema";
+import type { Attachment, Conversation, ContentPart, Message } from "@ace/schema";
 
 const ROLE_HEADING: Record<Message["role"], string> = {
   user: "🧑 User",
@@ -6,7 +6,25 @@ const ROLE_HEADING: Record<Message["role"], string> = {
   system: "⚙️ System",
 };
 
-function renderPart(part: ContentPart): string {
+/** Resolution context: platform (for relative paths) + attachments by id. */
+interface RenderContext {
+  platform: string;
+  attachments: Map<string, Attachment>;
+}
+
+/**
+ * Href for an attachment's downloaded bytes, relative to the Markdown file.
+ * MD lives at `<platform>/markdown/x.md`, bytes at `<platform>/attachments/…`,
+ * so a sibling-folder hop (`../attachments/…`) keeps links working offline.
+ */
+function localHref(attachment: Attachment | undefined, platform: string): string | undefined {
+  const localPath = attachment?.localPath;
+  if (!localPath) return undefined;
+  const prefix = `${platform}/`;
+  return localPath.startsWith(prefix) ? `../${localPath.slice(prefix.length)}` : localPath;
+}
+
+function renderPart(part: ContentPart, context: RenderContext): string {
   switch (part.type) {
     case "text":
       return part.text;
@@ -18,10 +36,21 @@ function renderPart(part: ContentPart): string {
       const rows = part.rows.map((row) => `| ${row.join(" | ")} |`);
       return [header, divider, ...rows].join("\n");
     }
-    case "image":
-      return `![${part.alt ?? ""}](${part.url ?? part.attachmentId ?? ""})`;
-    case "file":
-      return `📎 [${part.name ?? part.attachmentId}](${part.attachmentId})`;
+    case "image": {
+      const attachment = part.attachmentId ? context.attachments.get(part.attachmentId) : undefined;
+      const href =
+        localHref(attachment, context.platform) ??
+        part.url ??
+        attachment?.url ??
+        part.attachmentId ??
+        "";
+      return `![${part.alt ?? ""}](${href})`;
+    }
+    case "file": {
+      const attachment = context.attachments.get(part.attachmentId);
+      const href = localHref(attachment, context.platform) ?? attachment?.url ?? part.attachmentId;
+      return `📎 [${part.name ?? attachment?.name ?? part.attachmentId}](${href})`;
+    }
   }
 }
 
@@ -31,7 +60,7 @@ function renderPart(part: ContentPart): string {
  * `content`, no reasoning and no citations; rendering it would leave a bare,
  * dangling `## ⚙️ System` heading, so such empty messages are skipped.
  */
-function renderMessage(message: Message): string | null {
+function renderMessage(message: Message, context: RenderContext): string | null {
   const blocks: string[] = [];
 
   if (message.reasoning) {
@@ -40,7 +69,7 @@ function renderMessage(message: Message): string | null {
     );
   }
 
-  const body = message.content.map(renderPart).join("\n\n");
+  const body = message.content.map((part) => renderPart(part, context)).join("\n\n");
   if (body) blocks.push(body);
 
   if (message.citations?.length) {
@@ -66,15 +95,20 @@ export function renderMarkdown(conversation: Conversation): string {
 
   const parts: string[] = [`# ${conversation.title || conversation.id}`];
   if (metaBits.length) parts.push(`> ${metaBits.join(" · ")}`);
+  const context: RenderContext = {
+    platform: conversation.platform,
+    attachments: new Map((conversation.attachments ?? []).map((a) => [a.id, a])),
+  };
   for (const message of conversation.messages) {
-    const rendered = renderMessage(message);
+    const rendered = renderMessage(message, context);
     if (rendered) parts.push(rendered);
   }
 
   if (conversation.attachments?.length) {
     const items = conversation.attachments.map((a) => {
       const label = a.name ?? a.id;
-      return a.url ? `- [${label}](${a.url})` : `- ${label}`;
+      const href = localHref(a, conversation.platform) ?? a.url;
+      return href ? `- [${label}](${href})` : `- ${label}`;
     });
     parts.push("## Attachments\n\n" + items.join("\n"));
   }

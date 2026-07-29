@@ -1,10 +1,11 @@
 import type { Conversation, ConversationMeta } from "@ace/schema";
 import type { PlatformAdapter } from "./adapter.js";
 import type { Exporter, ExportedFile } from "./exporter.js";
+import { downloadAttachments } from "./attachments.js";
 import { throttled } from "./throttle.js";
 
 export interface ExportProgress {
-  phase: "list" | "fetch" | "export" | "done";
+  phase: "list" | "fetch" | "attachments" | "export" | "done";
   /** Conversation currently being processed, when applicable. */
   meta?: ConversationMeta;
   /** How many conversations have been fully processed so far. */
@@ -33,15 +34,36 @@ export interface ExportOptions {
   range?: ExportRange;
   /** Minimum spacing between conversation fetches, in ms. Default 500. */
   throttleMs?: number;
+  /**
+   * Also download each conversation's attachments (images, uploaded files)
+   * into `<platform>/attachments/…` and stamp `Attachment.localPath`.
+   * Off by default — attachments can be large and downloads are best effort.
+   */
+  includeAttachments?: boolean;
+  /** Per-attachment size cap in bytes. Default 50 MB; larger files are skipped. */
+  attachmentMaxBytes?: number;
+  /**
+   * Streaming sink: when provided, every produced file (exports and
+   * attachments) is handed over as soon as it exists and is NOT accumulated
+   * in `ExportResult.files`. This keeps peak memory at roughly one file plus
+   * whatever the sink retains (e.g. compressed ZIP output) instead of the
+   * whole uncompressed batch.
+   */
+  onFile?: (file: ExportedFile) => void;
   onProgress?: (progress: ExportProgress) => void;
   /** Called when a single conversation fails, so one bad chat can't abort the batch. */
   onError?: (id: string, error: unknown) => void;
 }
 
 export interface ExportResult {
+  /** Accumulated files — empty when `onFile` streams them instead. */
   files: ExportedFile[];
   conversations: Conversation[];
   failed: string[];
+  /** Attachments successfully downloaded (only when `includeAttachments`). */
+  attachmentsSaved: number;
+  /** Attachments skipped: over the size cap, unresolvable, or failed. */
+  attachmentsSkipped: number;
 }
 
 /**
@@ -50,7 +72,18 @@ export interface ExportResult {
  * thrown, so a single broken conversation never aborts a full-history export.
  */
 export async function exportConversations(options: ExportOptions): Promise<ExportResult> {
-  const { adapter, exporters, ids, range, throttleMs = 500, onProgress, onError } = options;
+  const {
+    adapter,
+    exporters,
+    ids,
+    range,
+    throttleMs = 500,
+    includeAttachments = false,
+    attachmentMaxBytes,
+    onFile,
+    onProgress,
+    onError,
+  } = options;
 
   const metas: ConversationMeta[] = [];
   const wanted = ids ? new Set(ids) : null;
@@ -73,16 +106,32 @@ export async function exportConversations(options: ExportOptions): Promise<Expor
   const files: ExportedFile[] = [];
   const conversations: Conversation[] = [];
   const failed: string[] = [];
+  let attachmentsSaved = 0;
+  let attachmentsSkipped = 0;
+  const emit = onFile ?? ((file: ExportedFile) => files.push(file));
 
   for (const meta of metas) {
     onProgress?.({ phase: "fetch", meta, completed: conversations.length, total: metas.length });
     try {
       const conversation = await fetchOne(meta.id);
+
+      // Attachments come before exporters so localPath lands in MD/JSON output.
+      if (includeAttachments && conversation.attachments?.length) {
+        onProgress?.({ phase: "attachments", meta, completed: conversations.length, total: metas.length });
+        const downloaded = await downloadAttachments(conversation, adapter, {
+          maxBytes: attachmentMaxBytes,
+          throttleMs,
+        });
+        for (const file of downloaded.files) emit(file);
+        attachmentsSaved += downloaded.saved;
+        attachmentsSkipped += downloaded.skipped;
+      }
+
       conversations.push(conversation);
 
       onProgress?.({ phase: "export", meta, completed: conversations.length, total: metas.length });
       for (const exporter of exporters) {
-        files.push(exporter.export(conversation));
+        emit(exporter.export(conversation));
       }
     } catch (error) {
       failed.push(meta.id);
@@ -91,5 +140,5 @@ export async function exportConversations(options: ExportOptions): Promise<Expor
   }
 
   onProgress?.({ phase: "done", completed: conversations.length, total: metas.length });
-  return { files, conversations, failed };
+  return { files, conversations, failed, attachmentsSaved, attachmentsSkipped };
 }

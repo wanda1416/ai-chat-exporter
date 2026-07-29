@@ -1,4 +1,13 @@
-import type { Conversation, ConversationMeta } from "@ace/schema";
+import type { Attachment, Conversation, ConversationMeta } from "@ace/schema";
+
+/** Bytes (plus optional metadata) of one downloaded attachment. */
+export interface AttachmentPayload {
+  bytes: Uint8Array;
+  /** Content type reported by the platform, e.g. "image/png". */
+  mimeType?: string;
+  /** Filename reported by the platform, when better than `Attachment.name`. */
+  name?: string;
+}
 
 /**
  * A platform adapter is the ONLY platform-specific code in the pipeline.
@@ -23,4 +32,16 @@ export interface PlatformAdapter {
 
   /** Fetch a single conversation, already normalized to the standard schema. */
   fetchConversation(id: string): Promise<Conversation>;
+
+  /**
+   * Optionally resolve the bytes of one attachment (platform-specific auth /
+   * URL resolution, e.g. ChatGPT's files download endpoint). Return null when
+   * the attachment cannot be resolved — the pipeline then falls back to a
+   * plain fetch of `Attachment.url`, or skips it. Absence of this method means
+   * the URL fallback is the only strategy.
+   */
+  fetchAttachment?(
+    attachment: Attachment,
+    conversation: Conversation,
+  ): Promise<AttachmentPayload | null>;
 }

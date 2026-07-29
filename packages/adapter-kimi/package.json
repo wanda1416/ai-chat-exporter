@@ -1,6 +1,6 @@
 {
   "name": "@ace/adapter-kimi",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Kimi (www.kimi.com) platform adapter — the v0.1 reference adapter.",
   "type": "module",
   "exports": {

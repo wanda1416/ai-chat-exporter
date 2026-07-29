@@ -85,6 +85,30 @@
     conversationDetail(id) {
       return this.get(`/backend-api/conversation/${encodeURIComponent(id)}`);
     }
+    /**
+     * Downloads one file (user upload `file-…` or generated image, whose
+     * `sediment://file_…` pointer is stripped to the bare id) by resolving the
+     * signed URL from the files download endpoint, then fetching it. Best
+     * effort: returns null on any failure so a dead file never aborts a batch.
+     */
+    async downloadFile(fileId) {
+      const clean = fileId.replace(/^[a-z][a-z0-9+.-]*:\/\//i, "");
+      try {
+        const data = await this.get(
+          `/backend-api/files/${encodeURIComponent(clean)}/download`
+        );
+        if (!data.download_url) return null;
+        const response = await this.fetchImpl(data.download_url);
+        if (!response.ok) return null;
+        const file = { bytes: new Uint8Array(await response.arrayBuffer()) };
+        const mime = response.headers.get("content-type");
+        if (mime) file.mimeType = mime;
+        if (data.file_name) file.name = data.file_name;
+        return file;
+      } catch {
+        return null;
+      }
+    }
   }
   const PLATFORM$4 = "chatgpt";
   const VISIBLE_CONTENT_TYPES = /* @__PURE__ */ new Set(["text", "multimodal_text"]);
@@ -315,6 +339,14 @@
         createdAt: meta == null ? void 0 : meta.createdAt,
         updatedAt: meta == null ? void 0 : meta.updatedAt
       });
+    }
+    /**
+     * Resolves attachment bytes via the files download endpoint — covers user
+     * uploads (`file-…`) and generated images (`sediment://file_…` pointers),
+     * neither of which carries a direct URL in the conversation payload.
+     */
+    async fetchAttachment(attachment) {
+      return this.client.downloadFile(attachment.id);
     }
   }
   const BASE_URL$2 = "https://chat.deepseek.com/api/v0/";
@@ -1259,6 +1291,15 @@
       return toConversation(id, chat, messages);
     }
   }
+  function slugify(input, fallback = "untitled") {
+    const slug = input.normalize("NFKC").replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
+    return slug || fallback;
+  }
+  function conversationBaseName(conversation) {
+    const date = (conversation.createdAt ?? conversation.updatedAt ?? "").slice(0, 10);
+    const title = slugify(conversation.title, conversation.id);
+    return date ? `${date}-${title}` : title;
+  }
   function sleep(ms) {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
@@ -1271,8 +1312,131 @@
       return fn(...args);
     };
   }
+  const DEFAULT_ATTACHMENT_MAX_BYTES = 50 * 1024 * 1024;
+  const EXTENSION_BY_MIME = {
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "image/gif": "gif",
+    "image/webp": "webp",
+    "image/svg+xml": "svg",
+    "application/pdf": "pdf",
+    "application/zip": "zip",
+    "text/plain": "txt",
+    "text/markdown": "md",
+    "text/csv": "csv"
+  };
+  async function readCapped(response, maxBytes) {
+    var _a2, _b2;
+    const declared = Number(response.headers.get("content-length") ?? "");
+    if (Number.isFinite(declared) && declared > maxBytes) return null;
+    const reader = (_b2 = (_a2 = response.body) == null ? void 0 : _a2.getReader) == null ? void 0 : _b2.call(_a2);
+    if (!reader) {
+      const bytes2 = new Uint8Array(await response.arrayBuffer());
+      return bytes2.byteLength > maxBytes ? null : bytes2;
+    }
+    const chunks = [];
+    let total = 0;
+    for (; ; ) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+    }
+    const bytes = new Uint8Array(total);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    return bytes;
+  }
+  function attachmentFileName(attachment, mimeType, index, used) {
+    const raw = (attachment.name || attachment.id || `attachment-${index}`).replace(/^[a-z][a-z0-9+.-]*:\/\//i, "").replace(/^.*[\\/]/, "");
+    const dot = raw.lastIndexOf(".");
+    const base = slugify(dot > 0 ? raw.slice(0, dot) : raw, `attachment-${index}`);
+    const namedExt = dot > 0 ? raw.slice(dot + 1).toLowerCase().replace(/[^a-z0-9]/g, "") : "";
+    const mime = (mimeType ?? attachment.mimeType ?? "").split(";")[0].trim();
+    const ext = namedExt || EXTENSION_BY_MIME[mime] || "bin";
+    let name = `${base}.${ext}`;
+    for (let n = 2; used.has(name); n++) name = `${base}-${n}.${ext}`;
+    used.add(name);
+    return name;
+  }
+  async function downloadAttachments(conversation, adapter, options = {}) {
+    var _a2;
+    const maxBytes = options.maxBytes ?? DEFAULT_ATTACHMENT_MAX_BYTES;
+    const throttleMs = options.throttleMs ?? 500;
+    const fetchImpl = options.fetchImpl ?? ((_a2 = globalThis.fetch) == null ? void 0 : _a2.bind(globalThis));
+    const files = [];
+    const used = /* @__PURE__ */ new Set();
+    const baseDir = `${conversation.platform}/attachments/${conversationBaseName(conversation)}`;
+    let saved = 0;
+    let skipped = 0;
+    let first = true;
+    for (const [index, attachment] of (conversation.attachments ?? []).entries()) {
+      if (typeof attachment.sizeBytes === "number" && attachment.sizeBytes > maxBytes) {
+        skipped++;
+        continue;
+      }
+      if (!first) await sleep(throttleMs);
+      first = false;
+      let payload = null;
+      try {
+        if (adapter.fetchAttachment) {
+          payload = await adapter.fetchAttachment(attachment, conversation);
+        }
+        if (!payload && attachment.url && fetchImpl) {
+          const response = await fetchImpl(attachment.url);
+          if (response.ok) {
+            const bytes = await readCapped(response, maxBytes);
+            if (bytes) {
+              payload = { bytes };
+              const mime = response.headers.get("content-type");
+              if (mime) payload.mimeType = mime;
+            }
+          }
+        }
+      } catch {
+        payload = null;
+      }
+      if (!payload || payload.bytes.byteLength > maxBytes) {
+        skipped++;
+        continue;
+      }
+      const mimeType = payload.mimeType ?? attachment.mimeType;
+      const name = attachmentFileName(
+        payload.name ? { ...attachment, name: payload.name } : attachment,
+        mimeType,
+        index,
+        used
+      );
+      const path = `${baseDir}/${name}`;
+      attachment.localPath = path;
+      if (!attachment.mimeType && mimeType) attachment.mimeType = mimeType.split(";")[0].trim();
+      if (attachment.sizeBytes === void 0) attachment.sizeBytes = payload.bytes.byteLength;
+      files.push({ path, content: payload.bytes, mimeType: mimeType ?? "application/octet-stream" });
+      saved++;
+    }
+    return { files, saved, skipped };
+  }
   async function exportConversations(options) {
-    const { adapter, exporters, ids, range, throttleMs = 500, onProgress, onError } = options;
+    var _a2;
+    const {
+      adapter,
+      exporters,
+      ids,
+      range,
+      throttleMs = 500,
+      includeAttachments = false,
+      attachmentMaxBytes,
+      onFile,
+      onProgress,
+      onError
+    } = options;
     const metas = [];
     const wanted = ids ? new Set(ids) : null;
     const from = Math.max(1, Math.floor((range == null ? void 0 : range.from) ?? 1));
@@ -1291,14 +1455,27 @@
     const files = [];
     const conversations = [];
     const failed = [];
+    let attachmentsSaved = 0;
+    let attachmentsSkipped = 0;
+    const emit = onFile ?? ((file) => files.push(file));
     for (const meta of metas) {
       onProgress == null ? void 0 : onProgress({ phase: "fetch", meta, completed: conversations.length, total: metas.length });
       try {
         const conversation = await fetchOne(meta.id);
+        if (includeAttachments && ((_a2 = conversation.attachments) == null ? void 0 : _a2.length)) {
+          onProgress == null ? void 0 : onProgress({ phase: "attachments", meta, completed: conversations.length, total: metas.length });
+          const downloaded = await downloadAttachments(conversation, adapter, {
+            maxBytes: attachmentMaxBytes,
+            throttleMs
+          });
+          for (const file of downloaded.files) emit(file);
+          attachmentsSaved += downloaded.saved;
+          attachmentsSkipped += downloaded.skipped;
+        }
         conversations.push(conversation);
         onProgress == null ? void 0 : onProgress({ phase: "export", meta, completed: conversations.length, total: metas.length });
         for (const exporter of exporters) {
-          files.push(exporter.export(conversation));
+          emit(exporter.export(conversation));
         }
       } catch (error) {
         failed.push(meta.id);
@@ -1306,16 +1483,7 @@
       }
     }
     onProgress == null ? void 0 : onProgress({ phase: "done", completed: conversations.length, total: metas.length });
-    return { files, conversations, failed };
-  }
-  function slugify(input, fallback = "untitled") {
-    const slug = input.normalize("NFKC").replace(/[\\/:*?"<>|]+/g, " ").replace(/\s+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80);
-    return slug || fallback;
-  }
-  function conversationBaseName(conversation) {
-    const date = (conversation.createdAt ?? conversation.updatedAt ?? "").slice(0, 10);
-    const title = slugify(conversation.title, conversation.id);
-    return date ? `${date}-${title}` : title;
+    return { files, conversations, failed, attachmentsSaved, attachmentsSkipped };
   }
   function jsonExporter() {
     return {
@@ -1335,7 +1503,13 @@
     assistant: "🤖 Assistant",
     system: "⚙️ System"
   };
-  function renderPart(part) {
+  function localHref(attachment, platform) {
+    const localPath = attachment == null ? void 0 : attachment.localPath;
+    if (!localPath) return void 0;
+    const prefix = `${platform}/`;
+    return localPath.startsWith(prefix) ? `../${localPath.slice(prefix.length)}` : localPath;
+  }
+  function renderPart(part, context) {
     switch (part.type) {
       case "text":
         return part.text;
@@ -1347,13 +1521,19 @@
         const rows = part.rows.map((row) => `| ${row.join(" | ")} |`);
         return [header, divider, ...rows].join("\n");
       }
-      case "image":
-        return `![${part.alt ?? ""}](${part.url ?? part.attachmentId ?? ""})`;
-      case "file":
-        return `📎 [${part.name ?? part.attachmentId}](${part.attachmentId})`;
+      case "image": {
+        const attachment = part.attachmentId ? context.attachments.get(part.attachmentId) : void 0;
+        const href = localHref(attachment, context.platform) ?? part.url ?? (attachment == null ? void 0 : attachment.url) ?? part.attachmentId ?? "";
+        return `![${part.alt ?? ""}](${href})`;
+      }
+      case "file": {
+        const attachment = context.attachments.get(part.attachmentId);
+        const href = localHref(attachment, context.platform) ?? (attachment == null ? void 0 : attachment.url) ?? part.attachmentId;
+        return `📎 [${part.name ?? (attachment == null ? void 0 : attachment.name) ?? part.attachmentId}](${href})`;
+      }
     }
   }
-  function renderMessage(message) {
+  function renderMessage(message, context) {
     var _a2;
     const blocks = [];
     if (message.reasoning) {
@@ -1361,7 +1541,7 @@
         "<details><summary>💭 Reasoning</summary>\n\n" + message.reasoning.content + "\n\n</details>"
       );
     }
-    const body = message.content.map(renderPart).join("\n\n");
+    const body = message.content.map((part) => renderPart(part, context)).join("\n\n");
     if (body) blocks.push(body);
     if ((_a2 = message.citations) == null ? void 0 : _a2.length) {
       const items = message.citations.map((c, i) => {
@@ -1382,14 +1562,19 @@
     ].filter(Boolean);
     const parts = [`# ${conversation.title || conversation.id}`];
     if (metaBits.length) parts.push(`> ${metaBits.join(" · ")}`);
+    const context = {
+      platform: conversation.platform,
+      attachments: new Map((conversation.attachments ?? []).map((a) => [a.id, a]))
+    };
     for (const message of conversation.messages) {
-      const rendered = renderMessage(message);
+      const rendered = renderMessage(message, context);
       if (rendered) parts.push(rendered);
     }
     if ((_a2 = conversation.attachments) == null ? void 0 : _a2.length) {
       const items = conversation.attachments.map((a) => {
         const label = a.name ?? a.id;
-        return a.url ? `- [${label}](${a.url})` : `- ${label}`;
+        const href = localHref(a, conversation.platform) ?? a.url;
+        return href ? `- [${label}](${href})` : `- ${label}`;
       });
       parts.push("## Attachments\n\n" + items.join("\n"));
     }
@@ -1927,22 +2112,74 @@
     for (; v; ++b)
       d[b] = v, v >>>= 8;
   };
-  function deflateSync(data, opts) {
-    return dopt(data, opts || {}, 0, 0);
-  }
-  var fltn = function(d, p, t, o) {
-    for (var k in d) {
-      var val = d[k], n = p + k, op = o;
-      if (Array.isArray(val))
-        op = mrg(o, val[1]), val = val[0];
-      if (ArrayBuffer.isView(val))
-        t[n] = [val, op];
-      else {
-        t[n += "/"] = [new u8(0), op];
-        fltn(val, n, t, o);
+  var Deflate = /* @__PURE__ */ function() {
+    function Deflate2(opts, cb) {
+      if (typeof opts == "function")
+        cb = opts, opts = {};
+      this.ondata = cb;
+      this.o = opts || {};
+      this.s = { l: 0, i: 32768, w: 32768, z: 32768 };
+      this.b = new u8(98304);
+      if (this.o.dictionary) {
+        var dict = this.o.dictionary.subarray(-32768);
+        this.b.set(dict, 32768 - dict.length);
+        this.s.i = 32768 - dict.length;
       }
     }
-  };
+    Deflate2.prototype.p = function(c, f) {
+      this.ondata(dopt(c, this.o, 0, 0, this.s), f);
+    };
+    Deflate2.prototype.push = function(chunk, final) {
+      if (!this.ondata)
+        err(5);
+      if (this.s.l)
+        err(4);
+      var endLen = chunk.length + this.s.z;
+      if (endLen > this.b.length) {
+        if (endLen > 2 * this.b.length - 32768) {
+          var newBuf = new u8(endLen & -32768);
+          newBuf.set(this.b.subarray(0, this.s.z));
+          this.b = newBuf;
+        }
+        var split = this.b.length - this.s.z;
+        this.b.set(chunk.subarray(0, split), this.s.z);
+        this.s.z = this.b.length;
+        this.p(this.b, false);
+        this.b.set(this.b.subarray(-32768));
+        this.b.set(chunk.subarray(split), 32768);
+        this.s.z = chunk.length - split + 32768;
+        this.s.i = 32766, this.s.w = 32768;
+      } else {
+        this.b.set(chunk, this.s.z);
+        this.s.z += chunk.length;
+      }
+      this.s.l = final & 1;
+      if (this.s.z > this.s.w + 8191 || final) {
+        this.p(this.b, final || false);
+        this.s.w = this.s.i, this.s.i -= 2;
+      }
+      if (final) {
+        this.s = this.o = {};
+        this.b = et;
+      }
+    };
+    Deflate2.prototype.flush = function(sync) {
+      if (!this.ondata)
+        err(5);
+      if (this.s.l)
+        err(4);
+      this.p(this.b, false);
+      this.s.w = this.s.i, this.s.i -= 2;
+      if (sync) {
+        var c = new u8(6);
+        c[0] = this.s.r >> 3;
+        var ep = wfblk(c, this.s.r, et);
+        this.s.r = 0;
+        this.ondata(c.subarray(0, ep >> 3), false);
+      }
+    };
+    return Deflate2;
+  }();
   var te = typeof TextEncoder != "undefined" && /* @__PURE__ */ new TextEncoder();
   var td = typeof TextDecoder != "undefined" && /* @__PURE__ */ new TextDecoder();
   var tds = 0;
@@ -1979,6 +2216,9 @@
     }
     return slc(ar, 0, ai);
   }
+  var dbf = function(l) {
+    return l == 1 ? 3 : l < 6 ? 2 : l == 9 ? 1 : 0;
+  };
   var exfl = function(ex) {
     var le = 0;
     if (ex) {
@@ -2037,62 +2277,229 @@
     wbytes(o, b + 12, d);
     wbytes(o, b + 16, e);
   };
-  function zipSync(data, opts) {
-    if (!opts)
-      opts = {};
-    var r = {};
-    var files = [];
-    fltn(data, "", r, opts);
-    var o = 0;
-    var tot = 0;
-    for (var fn in r) {
-      var _a2 = r[fn], file = _a2[0], p = _a2[1];
-      var compression = p.level == 0 ? 0 : 8;
-      var f = strToU8(fn), s = f.length;
-      var com = p.comment, m = com && strToU8(com), ms = m && m.length;
-      var exl = exfl(p.extra);
-      if (s > 65535)
-        err(11);
-      var d = compression ? deflateSync(file, p) : file, l = d.length;
-      var c = crc();
-      c.p(file);
-      files.push(mrg(p, {
-        size: file.length,
-        crc: c.d(),
-        c: d,
-        f,
-        m,
-        u: s != fn.length || m && com.length != ms,
-        o,
-        compression
-      }));
-      o += 30 + s + exl + l;
-      tot += 76 + 2 * (s + exl) + (ms || 0) + l;
+  var ZipPassThrough = /* @__PURE__ */ function() {
+    function ZipPassThrough2(filename) {
+      this.filename = filename;
+      this.c = crc();
+      this.size = 0;
+      this.compression = 0;
     }
-    var out = new u8(tot + 22), oe = o, cdl = tot - o;
-    for (var i = 0; i < files.length; ++i) {
-      var f = files[i];
-      wzh(out, f.o, f, f.f, f.u, f.c.length);
-      var badd = 30 + f.f.length + exfl(f.extra);
-      out.set(f.c, f.o + badd);
-      wzh(out, o, f, f.f, f.u, f.c.length, f.o, f.m), o += 16 + badd + (f.m ? f.m.length : 0);
+    ZipPassThrough2.prototype.process = function(chunk, final) {
+      this.ondata(null, chunk, final);
+    };
+    ZipPassThrough2.prototype.push = function(chunk, final) {
+      if (!this.ondata)
+        err(5);
+      this.c.p(chunk);
+      this.size += chunk.length;
+      if (final)
+        this.crc = this.c.d();
+      this.process(chunk, final || false);
+    };
+    return ZipPassThrough2;
+  }();
+  var ZipDeflate = /* @__PURE__ */ function() {
+    function ZipDeflate2(filename, opts) {
+      var _this = this;
+      if (!opts)
+        opts = {};
+      ZipPassThrough.call(this, filename);
+      this.d = new Deflate(opts, function(dat, final) {
+        _this.ondata(null, dat, final);
+      });
+      this.compression = 8;
+      this.flag = dbf(opts.level);
     }
-    wzf(out, o, files.length, cdl, oe);
-    return out;
+    ZipDeflate2.prototype.process = function(chunk, final) {
+      try {
+        this.d.push(chunk, final);
+      } catch (e) {
+        this.ondata(e, null, final);
+      }
+    };
+    ZipDeflate2.prototype.push = function(chunk, final) {
+      ZipPassThrough.prototype.push.call(this, chunk, final);
+    };
+    return ZipDeflate2;
+  }();
+  var Zip = /* @__PURE__ */ function() {
+    function Zip2(cb) {
+      this.ondata = cb;
+      this.u = [];
+      this.d = 1;
+    }
+    Zip2.prototype.add = function(file) {
+      var _this = this;
+      if (!this.ondata)
+        err(5);
+      if (this.d & 2)
+        this.ondata(err(4 + (this.d & 1) * 8, 0, 1), null, false);
+      else {
+        var f = strToU8(file.filename), fl_1 = f.length;
+        var com = file.comment, o = com && strToU8(com);
+        var u = fl_1 != file.filename.length || o && com.length != o.length;
+        var hl_1 = fl_1 + exfl(file.extra) + 30;
+        if (fl_1 > 65535)
+          this.ondata(err(11, 0, 1), null, false);
+        var header = new u8(hl_1);
+        wzh(header, 0, file, f, u, -1);
+        var chks_1 = [header];
+        var pAll_1 = function() {
+          for (var _i = 0, chks_2 = chks_1; _i < chks_2.length; _i++) {
+            var chk = chks_2[_i];
+            _this.ondata(null, chk, false);
+          }
+          chks_1 = [];
+        };
+        var tr_1 = this.d;
+        this.d = 0;
+        var ind_1 = this.u.length;
+        var uf_1 = mrg(file, {
+          f,
+          u,
+          o,
+          t: function() {
+            if (file.terminate)
+              file.terminate();
+          },
+          r: function() {
+            pAll_1();
+            if (tr_1) {
+              var nxt = _this.u[ind_1 + 1];
+              if (nxt)
+                nxt.r();
+              else
+                _this.d = 1;
+            }
+            tr_1 = 1;
+          }
+        });
+        var cl_1 = 0;
+        file.ondata = function(err2, dat, final) {
+          if (err2) {
+            _this.ondata(err2, dat, final);
+            _this.terminate();
+          } else {
+            cl_1 += dat.length;
+            chks_1.push(dat);
+            if (final) {
+              var dd = new u8(16);
+              wbytes(dd, 0, 134695760);
+              wbytes(dd, 4, file.crc);
+              wbytes(dd, 8, cl_1);
+              wbytes(dd, 12, file.size);
+              chks_1.push(dd);
+              uf_1.c = cl_1, uf_1.b = hl_1 + cl_1 + 16, uf_1.crc = file.crc, uf_1.size = file.size;
+              if (tr_1)
+                uf_1.r();
+              tr_1 = 1;
+            } else if (tr_1)
+              pAll_1();
+          }
+        };
+        this.u.push(uf_1);
+      }
+    };
+    Zip2.prototype.end = function() {
+      var _this = this;
+      if (this.d & 2) {
+        this.ondata(err(4 + (this.d & 1) * 8, 0, 1), null, true);
+        return;
+      }
+      if (this.d)
+        this.e();
+      else
+        this.u.push({
+          r: function() {
+            if (!(_this.d & 1))
+              return;
+            _this.u.splice(-1, 1);
+            _this.e();
+          },
+          t: function() {
+          }
+        });
+      this.d = 3;
+    };
+    Zip2.prototype.e = function() {
+      var bt = 0, l = 0, tl = 0;
+      for (var _i = 0, _a2 = this.u; _i < _a2.length; _i++) {
+        var f = _a2[_i];
+        tl += 46 + f.f.length + exfl(f.extra) + (f.o ? f.o.length : 0);
+      }
+      var out = new u8(tl + 22);
+      for (var _b2 = 0, _c = this.u; _b2 < _c.length; _b2++) {
+        var f = _c[_b2];
+        wzh(out, bt, f, f.f, f.u, -f.c - 2, l, f.o);
+        bt += 46 + f.f.length + exfl(f.extra) + (f.o ? f.o.length : 0), l += f.b;
+      }
+      wzf(out, bt, this.u.length, tl, l);
+      this.ondata(null, out, true);
+      this.d = 2;
+    };
+    Zip2.prototype.terminate = function() {
+      for (var _i = 0, _a2 = this.u; _i < _a2.length; _i++) {
+        var f = _a2[_i];
+        f.t();
+      }
+      this.d = 2;
+    };
+    return Zip2;
+  }();
+  const STORED_MIME = /^(?:image|video|audio)\/|\/(?:zip|gzip|x-7z-compressed)$/;
+  const DEFAULT_SPILL_BYTES = 32 * 1024 * 1024;
+  class ZipSink {
+    constructor(options = {}) {
+      __publicField(this, "zip");
+      __publicField(this, "spillBytes");
+      __publicField(this, "parts", []);
+      __publicField(this, "chunks", []);
+      __publicField(this, "chunkBytes", 0);
+      __publicField(this, "error", null);
+      __publicField(this, "finished");
+      __publicField(this, "resolveFinished");
+      this.spillBytes = options.spillBytes ?? DEFAULT_SPILL_BYTES;
+      this.finished = new Promise((resolve) => {
+        this.resolveFinished = resolve;
+      });
+      this.zip = new Zip((err2, data, final) => {
+        if (err2) {
+          this.error = err2;
+          this.resolveFinished();
+          return;
+        }
+        if (data.length) {
+          this.chunks.push(data);
+          this.chunkBytes += data.length;
+          if (this.chunkBytes >= this.spillBytes) this.spill();
+        }
+        if (final) this.resolveFinished();
+      });
+    }
+    spill() {
+      if (!this.chunkBytes) return;
+      this.parts.push(new Blob(this.chunks));
+      this.chunks = [];
+      this.chunkBytes = 0;
+    }
+    /** Adds one file; its bytes are compressed (or stored) immediately. */
+    add(file) {
+      if (this.error) throw this.error;
+      const bytes = typeof file.content === "string" ? strToU8(file.content) : file.content;
+      const entry = STORED_MIME.test(file.mimeType) ? new ZipPassThrough(file.path) : new ZipDeflate(file.path, { level: 6 });
+      this.zip.add(entry);
+      entry.push(bytes, true);
+    }
+    /** Finalizes the archive and returns it as a single Blob. */
+    async finish() {
+      this.zip.end();
+      await this.finished;
+      if (this.error) throw this.error;
+      this.spill();
+      return new Blob(this.parts, { type: "application/zip" });
+    }
   }
-  function bundleZip(files) {
-    const entries = {};
-    for (const file of files) {
-      entries[file.path] = typeof file.content === "string" ? strToU8(file.content) : file.content;
-    }
-    return zipSync(entries, { level: 6 });
-  }
-  function download(bytes, filename) {
-    const buffer = bytes.buffer.slice(
-      bytes.byteOffset,
-      bytes.byteOffset + bytes.byteLength
-    );
-    const blob = new Blob([buffer], { type: "application/zip" });
+  function download(blob, filename) {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
@@ -2107,6 +2514,8 @@
         return `Listing conversations… (${p.total})`;
       case "fetch":
         return `Fetching ${p.completed + 1}/${p.total}: ${((_a2 = p.meta) == null ? void 0 : _a2.title) ?? ""}`;
+      case "attachments":
+        return `Downloading files ${p.completed + 1}/${p.total}…`;
       case "export":
         return `Exporting ${p.completed}/${p.total}…`;
       case "done":
@@ -2123,12 +2532,15 @@
     ];
     return adapters.find((adapter) => adapter.detect()) ?? null;
   }
-  async function runExport(adapter, setStatus, range) {
-    const { files, conversations, failed } = await exportConversations({
+  async function runExport(adapter, setStatus, choices) {
+    const sink = new ZipSink();
+    const { conversations, failed, attachmentsSaved, attachmentsSkipped } = await exportConversations({
       adapter,
       exporters: [markdownExporter(), jsonExporter()],
-      range,
+      range: choices.range,
+      includeAttachments: choices.includeAttachments,
       throttleMs: 500,
+      onFile: (file) => sink.add(file),
       onProgress: (p) => setStatus(describeProgress(p)),
       onError: (id, error) => console.error("[ai-chat-exporter] failed", id, error)
     });
@@ -2136,10 +2548,13 @@
       setStatus("No conversations exported.");
       return;
     }
-    const zip = bundleZip(files);
+    const zip = await sink.finish();
     download(zip, `${adapter.platform}-export-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.zip`);
-    const suffix = failed.length ? ` (${failed.length} failed)` : "";
-    setStatus(`Saved ${conversations.length} conversations${suffix}.`);
+    const bits = [`Saved ${conversations.length} conversations`];
+    if (attachmentsSaved) bits.push(`+${attachmentsSaved} files`);
+    if (attachmentsSkipped) bits.push(`${attachmentsSkipped} files skipped`);
+    if (failed.length) bits.push(`${failed.length} failed`);
+    setStatus(`${bits[0]}${bits.length > 1 ? ` (${bits.slice(1).join(", ")})` : ""}.`);
   }
   const countCache = /* @__PURE__ */ new Map();
   async function countConversations(adapter, onTick) {
@@ -2156,7 +2571,7 @@
     countCache.set(adapter.platform, n);
     return n;
   }
-  function askRange(adapter) {
+  function askChoices(adapter) {
     return new Promise((resolve) => {
       const overlay = document.createElement("div");
       Object.assign(overlay.style, {
@@ -2194,6 +2609,10 @@
                style="width:0;flex:1;padding:6px 8px;border:1px solid #ccc;border-radius:6px;background:#fff;color:#111">
       </div>
       <div data-role="error" style="color:#c00;margin-bottom:8px;display:none"></div>
+      <label style="display:flex;gap:8px;align-items:center;margin-bottom:12px;cursor:pointer">
+        <input data-role="attachments" type="checkbox" style="margin:0">
+        <span>Include attachments (images &amp; files)</span>
+      </label>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
         <span data-role="total" style="color:#666">Total: unknown</span>
         <button data-role="count" style="padding:3px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#333;cursor:pointer;font-size:12px">Load count</button>
@@ -2205,6 +2624,7 @@
       overlay.appendChild(panel);
       const fromInput = panel.querySelector('[data-role="from"]');
       const toInput = panel.querySelector('[data-role="to"]');
+      const attachmentsInput = panel.querySelector('[data-role="attachments"]');
       const errorBox = panel.querySelector('[data-role="error"]');
       const totalLabel = panel.querySelector('[data-role="total"]');
       const countButton = panel.querySelector('[data-role="count"]');
@@ -2237,7 +2657,7 @@
           errorBox.style.display = "block";
           return;
         }
-        close({ from, to });
+        close({ range: { from, to }, includeAttachments: attachmentsInput.checked });
       };
       panel.querySelector('[data-role="ok"]').addEventListener("click", submit);
       panel.querySelector('[data-role="cancel"]').addEventListener("click", () => close(null));
@@ -2278,11 +2698,11 @@
         setStatus("Unsupported page.");
         return;
       }
-      const range = await askRange(adapter);
-      if (!range) return;
+      const choices = await askChoices(adapter);
+      if (!choices) return;
       button.disabled = true;
       try {
-        await runExport(adapter, setStatus, range);
+        await runExport(adapter, setStatus, choices);
       } catch (error) {
         console.error("[ai-chat-exporter]", error);
         setStatus("Export failed — see console.");

@@ -11,15 +11,10 @@ import {
 } from "@ace/core";
 import { jsonExporter } from "@ace/exporter-json";
 import { markdownExporter } from "@ace/exporter-markdown";
-import { bundleZip } from "@ace/exporter-zip";
+import { ZipSink } from "@ace/exporter-zip";
 
-/** Triggers a browser download for the given bytes. */
-function download(bytes: Uint8Array, filename: string): void {
-  const buffer = bytes.buffer.slice(
-    bytes.byteOffset,
-    bytes.byteOffset + bytes.byteLength,
-  ) as ArrayBuffer;
-  const blob = new Blob([buffer], { type: "application/zip" });
+/** Triggers a browser download for the given blob. */
+function download(blob: Blob, filename: string): void {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
@@ -34,6 +29,8 @@ function describeProgress(p: ExportProgress): string {
       return `Listing conversations… (${p.total})`;
     case "fetch":
       return `Fetching ${p.completed + 1}/${p.total}: ${p.meta?.title ?? ""}`;
+    case "attachments":
+      return `Downloading files ${p.completed + 1}/${p.total}…`;
     case "export":
       return `Exporting ${p.completed}/${p.total}…`;
     case "done":
@@ -56,26 +53,36 @@ function resolveAdapter(): PlatformAdapter | null {
 async function runExport(
   adapter: PlatformAdapter,
   setStatus: (text: string) => void,
-  range: ExportRange,
+  choices: ExportChoices,
 ): Promise<void> {
-  const { files, conversations, failed } = await exportConversations({
-    adapter,
-    exporters: [markdownExporter(), jsonExporter()],
-    range,
-    throttleMs: 500,
-    onProgress: (p) => setStatus(describeProgress(p)),
-    onError: (id, error) => console.error("[ai-chat-exporter] failed", id, error),
-  });
+  // Stream every produced file straight into the ZIP: input buffers are
+  // compressed and released one by one, so a big export (especially with
+  // attachments) never has to sit in memory uncompressed.
+  const sink = new ZipSink();
+  const { conversations, failed, attachmentsSaved, attachmentsSkipped } =
+    await exportConversations({
+      adapter,
+      exporters: [markdownExporter(), jsonExporter()],
+      range: choices.range,
+      includeAttachments: choices.includeAttachments,
+      throttleMs: 500,
+      onFile: (file) => sink.add(file),
+      onProgress: (p) => setStatus(describeProgress(p)),
+      onError: (id, error) => console.error("[ai-chat-exporter] failed", id, error),
+    });
 
   if (!conversations.length) {
     setStatus("No conversations exported.");
     return;
   }
 
-  const zip = bundleZip(files);
+  const zip = await sink.finish();
   download(zip, `${adapter.platform}-export-${new Date().toISOString().slice(0, 10)}.zip`);
-  const suffix = failed.length ? ` (${failed.length} failed)` : "";
-  setStatus(`Saved ${conversations.length} conversations${suffix}.`);
+  const bits = [`Saved ${conversations.length} conversations`];
+  if (attachmentsSaved) bits.push(`+${attachmentsSaved} files`);
+  if (attachmentsSkipped) bits.push(`${attachmentsSkipped} files skipped`);
+  if (failed.length) bits.push(`${failed.length} failed`);
+  setStatus(`${bits[0]}${bits.length > 1 ? ` (${bits.slice(1).join(", ")})` : ""}.`);
 }
 
 /**
@@ -103,11 +110,17 @@ async function countConversations(
   return n;
 }
 
+/** What the user picked in the export dialog. */
+interface ExportChoices {
+  range: ExportRange;
+  includeAttachments: boolean;
+}
+
 /**
- * Modal asking for the 1-based, inclusive conversation range. Resolves with
- * the chosen range, or null if the user cancels.
+ * Modal asking for the 1-based, inclusive conversation range and whether to
+ * download attachments. Resolves with the choices, or null on cancel.
  */
-function askRange(adapter: PlatformAdapter): Promise<ExportRange | null> {
+function askChoices(adapter: PlatformAdapter): Promise<ExportChoices | null> {
   return new Promise((resolve) => {
     const overlay = document.createElement("div");
     Object.assign(overlay.style, {
@@ -146,6 +159,10 @@ function askRange(adapter: PlatformAdapter): Promise<ExportRange | null> {
                style="width:0;flex:1;padding:6px 8px;border:1px solid #ccc;border-radius:6px;background:#fff;color:#111">
       </div>
       <div data-role="error" style="color:#c00;margin-bottom:8px;display:none"></div>
+      <label style="display:flex;gap:8px;align-items:center;margin-bottom:12px;cursor:pointer">
+        <input data-role="attachments" type="checkbox" style="margin:0">
+        <span>Include attachments (images &amp; files)</span>
+      </label>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
         <span data-role="total" style="color:#666">Total: unknown</span>
         <button data-role="count" style="padding:3px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#333;cursor:pointer;font-size:12px">Load count</button>
@@ -158,6 +175,7 @@ function askRange(adapter: PlatformAdapter): Promise<ExportRange | null> {
 
     const fromInput = panel.querySelector<HTMLInputElement>('[data-role="from"]')!;
     const toInput = panel.querySelector<HTMLInputElement>('[data-role="to"]')!;
+    const attachmentsInput = panel.querySelector<HTMLInputElement>('[data-role="attachments"]')!;
     const errorBox = panel.querySelector<HTMLElement>('[data-role="error"]')!;
     const totalLabel = panel.querySelector<HTMLElement>('[data-role="total"]')!;
     const countButton = panel.querySelector<HTMLButtonElement>('[data-role="count"]')!;
@@ -180,7 +198,7 @@ function askRange(adapter: PlatformAdapter): Promise<ExportRange | null> {
       }
     });
 
-    const close = (result: ExportRange | null) => {
+    const close = (result: ExportChoices | null) => {
       overlay.remove();
       resolve(result);
     };
@@ -193,7 +211,7 @@ function askRange(adapter: PlatformAdapter): Promise<ExportRange | null> {
         errorBox.style.display = "block";
         return;
       }
-      close({ from, to });
+      close({ range: { from, to }, includeAttachments: attachmentsInput.checked });
     };
 
     panel.querySelector('[data-role="ok"]')!.addEventListener("click", submit);
@@ -239,11 +257,11 @@ function mountButton(): void {
       setStatus("Unsupported page.");
       return;
     }
-    const range = await askRange(adapter);
-    if (!range) return;
+    const choices = await askChoices(adapter);
+    if (!choices) return;
     button.disabled = true;
     try {
-      await runExport(adapter, setStatus, range);
+      await runExport(adapter, setStatus, choices);
     } catch (error) {
       console.error("[ai-chat-exporter]", error);
       setStatus("Export failed — see console.");

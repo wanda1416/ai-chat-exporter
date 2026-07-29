@@ -1,6 +1,6 @@
 {
   "name": "@ace/schema",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Open, portable conversation interchange format (Schema v1) — single source of truth via Zod.",
   "type": "module",
   "exports": {

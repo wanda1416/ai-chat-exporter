@@ -1,6 +1,6 @@
 {
   "name": "@ace/exporter-json",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Exports a Conversation as standard-schema JSON.",
   "type": "module",
   "exports": {

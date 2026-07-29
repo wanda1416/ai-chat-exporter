@@ -26,6 +26,12 @@ export const Attachment = z.object({
   url: z.string().optional(),
   /** Integrity checksum when the platform exposes one. */
   checksum: z.string().optional(),
+  /**
+   * Relative path of the downloaded bytes inside the export bundle,
+   * e.g. "kimi/attachments/2026-07-01-title/photo.png". Set by the pipeline
+   * when "include attachments" is enabled and the download succeeded.
+   */
+  localPath: z.string().optional(),
 });
 export type Attachment = z.infer<typeof Attachment>;
 

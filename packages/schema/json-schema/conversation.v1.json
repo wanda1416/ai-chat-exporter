@@ -247,6 +247,9 @@
               },
               "checksum": {
                 "type": "string"
+              },
+              "localPath": {
+                "type": "string"
               }
             },
             "required": [

@@ -58,4 +58,31 @@ describe("renderMarkdown", () => {
     expect(md).toContain("| a | b |");
     expect(md).toContain("1. [Docs](https://example.com)");
   });
+
+  it("links images and attachments to their downloaded local path", () => {
+    const convo = conversation([
+      {
+        id: "a1",
+        role: "assistant",
+        content: [{ type: "image", attachmentId: "att1", alt: "cat" }],
+      },
+    ]);
+    convo.attachments = [
+      {
+        id: "att1",
+        name: "cat.png",
+        url: "https://cdn.example.com/signed?temp=1",
+        localPath: "kimi/attachments/2026-07-28-Demo/cat.png",
+      },
+      { id: "att2", name: "notes.pdf", url: "https://cdn.example.com/notes.pdf" },
+    ];
+
+    const md = renderMarkdown(convo);
+
+    // localPath wins over the (temporary) signed URL, relative to markdown/.
+    expect(md).toContain("![cat](../attachments/2026-07-28-Demo/cat.png)");
+    expect(md).toContain("- [cat.png](../attachments/2026-07-28-Demo/cat.png)");
+    // no localPath → falls back to the URL
+    expect(md).toContain("- [notes.pdf](https://cdn.example.com/notes.pdf)");
+  });
 });

@@ -159,6 +159,7 @@ pnpm schema:json      # 重新生成发布用的 JSON Schema
 | 版本 | 范围 |
 |---|---|
 | **v0.1** | Schema v1 + Kimi、Gemini、Grok、DeepSeek 与 ChatGPT 适配器 + MD/JSON/ZIP 导出器 + 油猴脚本（区间对话框）+ Chrome 扩展 |
+| **v0.1.1** | 可选附件下载（图片与上传文件）、流式 ZIP（`ZipSink`）、ChatGPT 附件通过 `/backend-api/files/{id}/download` 端点解析 |
 | v0.2 | CLI 形态（增量备份）+ 另一个高需求平台 |
 | v0.3 | 适配器指南 + fixture 匿名化工具 + CONTRIBUTING —— 开放社区适配器 |
 | v0.4+ | Obsidian 导出器、更多平台、Chrome Web Store 上架 |

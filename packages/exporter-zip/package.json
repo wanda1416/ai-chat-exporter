@@ -1,6 +1,6 @@
 {
   "name": "@ace/exporter-zip",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Bundles exported files into a single ZIP archive (fflate).",
   "type": "module",
   "exports": {

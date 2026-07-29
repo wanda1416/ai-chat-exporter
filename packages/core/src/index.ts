@@ -4,8 +4,14 @@
  * standard schema directly, with no separate normalizer layer.
  */
 
-export type { PlatformAdapter } from "./adapter.js";
+export type { PlatformAdapter, AttachmentPayload } from "./adapter.js";
 export type { Exporter, ExportedFile } from "./exporter.js";
+export {
+  downloadAttachments,
+  DEFAULT_ATTACHMENT_MAX_BYTES,
+  type DownloadAttachmentsOptions,
+  type DownloadAttachmentsResult,
+} from "./attachments.js";
 export {
   exportConversations,
   type ExportOptions,
