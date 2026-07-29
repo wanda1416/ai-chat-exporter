@@ -1,0 +1,17 @@
+{
+  "name": "@ace/extension",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Chrome extension (MV3) shell — same in-page bootstrap as the userscript, shipped via a MAIN-world content script.",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ace/app-core": "workspace:*"
+  },
+  "devDependencies": {
+    "vite": "^5.4.11"
+  }
+}

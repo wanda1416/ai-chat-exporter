@@ -1,0 +1,21 @@
+{
+  "name": "@ace/app-core",
+  "version": "0.1.0",
+  "description": "Shared in-page bootstrap (button, range dialog, export flow) consumed by the userscript and the Chrome extension shells.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ace/adapter-gemini": "workspace:*",
+    "@ace/adapter-kimi": "workspace:*",
+    "@ace/core": "workspace:*",
+    "@ace/exporter-json": "workspace:*",
+    "@ace/exporter-markdown": "workspace:*",
+    "@ace/exporter-zip": "workspace:*"
+  }
+}

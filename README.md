@@ -30,19 +30,35 @@ Want another platform? See [Writing an adapter](#writing-an-adapter).
 
 ## Install & use (Kimi & Gemini)
 
-The v0.1 shipping form is a single **Tampermonkey userscript** covering both platforms — no token setup, runs in your logged-in session and picks the right adapter per site.
+v0.1 ships in two forms with identical behavior (same in-page code, `@ace/app-core`): a **Tampermonkey userscript** and a **Chrome extension**. Neither needs token setup — both run in your logged-in session and pick the right adapter per site.
+
+### Form 1: userscript
 
 1. Install [Tampermonkey](https://www.tampermonkey.net/) in your browser.
-2. Build the userscript:
+2. Install the script, either way works:
+   - **One-click install (recommended)**: open [ai-chat-exporter.user.js](https://raw.githubusercontent.com/wanda1416/ai-chat-exporter/master/apps/userscript/dist/ai-chat-exporter.user.js) — Tampermonkey shows an install page; the script auto-updates when the repo does.
+   - **Build from source**:
+     ```bash
+     pnpm install
+     pnpm --filter @ace/userscript build
+     ```
+     The bundle is emitted to `apps/userscript/dist/ai-chat-exporter.user.js`; open that file in the browser (or drag it into the Tampermonkey dashboard) and confirm the install.
+
+### Form 2: Chrome extension (load unpacked — not on the Web Store yet)
+
+1. Build the extension:
    ```bash
    pnpm install
-   pnpm --filter @ace/userscript build
+   pnpm --filter @ace/extension build
    ```
-   The bundle is emitted to `apps/userscript/dist/@ace/userscript.user.js`.
-3. Open that `.user.js` file in the browser (or drag it into the Tampermonkey dashboard) and confirm the install.
-4. Go to [kimi.com](https://www.kimi.com/) **or** [gemini.google.com](https://gemini.google.com/), log in, and click the **“Export all chats”** button (bottom-right).
-5. A dialog lets you pick the conversation range to export (1-based, inclusive — e.g. 1–100; leave “to” empty for everything) and optionally load the total conversation count.
-6. A `<platform>-export-YYYY-MM-DD.zip` downloads, with Markdown and JSON kept in separate folders:
+2. Open `chrome://extensions`, enable “Developer mode” (top right), click “Load unpacked” and pick the `apps/extension/dist` folder.
+3. The extension requests zero permissions — its content script runs in the page's MAIN world, the exact environment the userscript runs in.
+
+### Usage (same for both forms)
+
+1. Go to [kimi.com](https://www.kimi.com/) **or** [gemini.google.com](https://gemini.google.com/), log in, and click the **“Export all chats”** button (bottom-right).
+2. A dialog lets you pick the conversation range to export (1-based, inclusive — e.g. 1–100; leave “to” empty for everything) and optionally load the total conversation count.
+3. A `<platform>-export-YYYY-MM-DD.zip` downloads, with Markdown and JSON kept in separate folders:
    ```
    kimi/            (or gemini/)
    ├── markdown/    one .md per conversation
@@ -96,8 +112,10 @@ packages/
   exporter-markdown/   Human-readable .md per conversation
   exporter-json/       Schema-faithful .json per conversation
   exporter-zip/        Bundles the batch (fflate)
+  app-core/            In-page bootstrap (button + range dialog + export flow), shared by both shells
 apps/
-  userscript/          Shipping form: Tampermonkey script (built with vite-plugin-monkey)
+  userscript/          Shipping form 1: Tampermonkey script (built with vite-plugin-monkey)
+  extension/           Shipping form 2: Chrome extension (MV3, MAIN-world content script, zero permissions)
 docs/
   blueprint.md         Design blueprint + real API findings + engineering notes
 ```
@@ -134,10 +152,10 @@ Implement `PlatformAdapter` in a new `packages/adapter-<name>/`, mapping the pla
 
 | Version | Scope |
 |---|---|
-| **v0.1** | Schema v1 + Kimi & Gemini adapters + MD/JSON/ZIP exporters + userscript (range dialog) |
+| **v0.1** | Schema v1 + Kimi & Gemini adapters + MD/JSON/ZIP exporters + userscript (range dialog) + Chrome extension |
 | v0.2 | CLI form (incremental backup) + a third high-demand platform |
 | v0.3 | Adapter guide + fixture anonymizer + CONTRIBUTING — open community adapters |
-| v0.4+ | Browser-extension form, Obsidian exporter, more platforms |
+| v0.4+ | Obsidian exporter, more platforms, Chrome Web Store listing |
 
 ## Acknowledgements
 

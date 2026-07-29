@@ -1517,6 +1517,9 @@
     });
     document.body.appendChild(button);
   }
-  mountButton();
+  function bootstrap() {
+    mountButton();
+  }
+  bootstrap();
 
 })();

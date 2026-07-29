@@ -30,19 +30,35 @@
 
 ## 安装与使用（Kimi 与 Gemini）
 
-v0.1 的发行形态是一个同时覆盖两个平台的 **Tampermonkey 油猴脚本**——无需配置 token，运行在你已登录的会话中，并按站点自动选择对应适配器。
+v0.1 提供两种发行形态，功能完全一致（同一份页内代码 `@ace/app-core`）：**Tampermonkey 油猴脚本**和 **Chrome 扩展**。都无需配置 token，运行在你已登录的会话中，并按站点自动选择对应适配器。
+
+### 形态一：油猴脚本
 
 1. 在浏览器中安装 [Tampermonkey](https://www.tampermonkey.net/)。
-2. 构建油猴脚本：
+2. 安装脚本，两种方式任选：
+   - **一键安装（推荐）**：直接打开 [ai-chat-exporter.user.js](https://raw.githubusercontent.com/wanda1416/ai-chat-exporter/master/apps/userscript/dist/ai-chat-exporter.user.js)，Tampermonkey 会弹出安装页；仓库更新后脚本会自动升级。
+   - **从源码构建**：
+     ```bash
+     pnpm install
+     pnpm --filter @ace/userscript build
+     ```
+     产物会输出到 `apps/userscript/dist/ai-chat-exporter.user.js`，在浏览器中打开该文件（或把它拖进 Tampermonkey 面板）并确认安装。
+
+### 形态二：Chrome 扩展（开发者模式加载，尚未上架商店）
+
+1. 构建扩展：
    ```bash
    pnpm install
-   pnpm --filter @ace/userscript build
+   pnpm --filter @ace/extension build
    ```
-   产物会输出到 `apps/userscript/dist/@ace/userscript.user.js`。
-3. 在浏览器中打开该 `.user.js` 文件（或把它拖进 Tampermonkey 面板）并确认安装。
-4. 打开 [kimi.com](https://www.kimi.com/) **或** [gemini.google.com](https://gemini.google.com/) 登录，点击右下角的 **“Export all chats”** 按钮。
-5. 弹出的对话框可选择导出的对话区间（从 1 开始、含首尾，如 1–100；“to” 留空则导出全部），也可按需加载对话总数。
-6. 会下载一个 `<platform>-export-YYYY-MM-DD.zip`，Markdown 与 JSON 分目录存放：
+2. 打开 `chrome://extensions`，开启右上角“开发者模式”，点“加载已解压的扩展程序”，选择 `apps/extension/dist` 目录。
+3. 扩展零权限申请（内容脚本跑在页面主世界，与油猴脚本运行环境完全等价）。
+
+### 使用（两种形态相同）
+
+1. 打开 [kimi.com](https://www.kimi.com/) **或** [gemini.google.com](https://gemini.google.com/) 登录，点击右下角的 **“Export all chats”** 按钮。
+2. 弹出的对话框可选择导出的对话区间（从 1 开始、含首尾，如 1–100；“to” 留空则导出全部），也可按需加载对话总数。
+3. 会下载一个 `<platform>-export-YYYY-MM-DD.zip`，Markdown 与 JSON 分目录存放：
    ```
    kimi/            （或 gemini/）
    ├── markdown/    每条对话一个 .md
@@ -96,8 +112,10 @@ packages/
   exporter-markdown/   每条对话一个可读的 .md
   exporter-json/       每条对话一个忠于 Schema 的 .json
   exporter-zip/        打包整批（fflate）
+  app-core/            页内引导（按钮 + 区间对话框 + 导出流程），两个发行壳共用
 apps/
-  userscript/          发行形态：Tampermonkey 脚本（用 vite-plugin-monkey 构建）
+  userscript/          发行形态 1：Tampermonkey 脚本（用 vite-plugin-monkey 构建）
+  extension/           发行形态 2：Chrome 扩展（MV3，MAIN world 内容脚本，零权限）
 docs/
   blueprint.md         设计蓝图 + 真实 API 发现 + 工程注意事项
 ```
@@ -134,10 +152,10 @@ pnpm schema:json      # 重新生成发布用的 JSON Schema
 
 | 版本 | 范围 |
 |---|---|
-| **v0.1** | Schema v1 + Kimi 与 Gemini 适配器 + MD/JSON/ZIP 导出器 + 油猴脚本（区间对话框） |
+| **v0.1** | Schema v1 + Kimi 与 Gemini 适配器 + MD/JSON/ZIP 导出器 + 油猴脚本（区间对话框）+ Chrome 扩展 |
 | v0.2 | CLI 形态（增量备份）+ 第三个高需求平台 |
 | v0.3 | 适配器指南 + fixture 匿名化工具 + CONTRIBUTING —— 开放社区适配器 |
-| v0.4+ | 浏览器扩展形态、Obsidian 导出器、更多平台 |
+| v0.4+ | Obsidian 导出器、更多平台、Chrome Web Store 上架 |
 
 ## 致谢
 

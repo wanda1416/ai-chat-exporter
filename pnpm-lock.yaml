@@ -18,26 +18,21 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.20.1)
 
+  apps/extension:
+    dependencies:
+      '@ace/app-core':
+        specifier: workspace:*
+        version: link:../../packages/app-core
+    devDependencies:
+      vite:
+        specifier: ^5.4.11
+        version: 5.4.21(@types/node@22.20.1)
+
   apps/userscript:
     dependencies:
-      '@ace/adapter-gemini':
+      '@ace/app-core':
         specifier: workspace:*
-        version: link:../../packages/adapter-gemini
-      '@ace/adapter-kimi':
-        specifier: workspace:*
-        version: link:../../packages/adapter-kimi
-      '@ace/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@ace/exporter-json':
-        specifier: workspace:*
-        version: link:../../packages/exporter-json
-      '@ace/exporter-markdown':
-        specifier: workspace:*
-        version: link:../../packages/exporter-markdown
-      '@ace/exporter-zip':
-        specifier: workspace:*
-        version: link:../../packages/exporter-zip
+        version: link:../../packages/app-core
     devDependencies:
       vite:
         specifier: ^5.4.11
@@ -63,6 +58,27 @@ importers:
       '@ace/schema':
         specifier: workspace:*
         version: link:../schema
+
+  packages/app-core:
+    dependencies:
+      '@ace/adapter-gemini':
+        specifier: workspace:*
+        version: link:../adapter-gemini
+      '@ace/adapter-kimi':
+        specifier: workspace:*
+        version: link:../adapter-kimi
+      '@ace/core':
+        specifier: workspace:*
+        version: link:../core
+      '@ace/exporter-json':
+        specifier: workspace:*
+        version: link:../exporter-json
+      '@ace/exporter-markdown':
+        specifier: workspace:*
+        version: link:../exporter-markdown
+      '@ace/exporter-zip':
+        specifier: workspace:*
+        version: link:../exporter-zip
 
   packages/core:
     dependencies:

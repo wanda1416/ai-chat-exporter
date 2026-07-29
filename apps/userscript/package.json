@@ -10,12 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ace/adapter-gemini": "workspace:*",
-    "@ace/adapter-kimi": "workspace:*",
-    "@ace/core": "workspace:*",
-    "@ace/exporter-json": "workspace:*",
-    "@ace/exporter-markdown": "workspace:*",
-    "@ace/exporter-zip": "workspace:*"
+    "@ace/app-core": "workspace:*"
   },
   "devDependencies": {
     "vite": "^5.4.11",
