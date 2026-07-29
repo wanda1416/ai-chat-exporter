@@ -13,7 +13,7 @@ Most existing tools export one conversation at a time and only produce Markdown.
 
 ## Status
 
-**v0.1 — alpha.** The core pipeline, Schema v1, and four adapters (Kimi, Gemini, Grok, DeepSeek) are working end-to-end in the shipping userscript, verified against live accounts (real conversations exported to disk; the Kimi run was byte-verified by SHA-256). The platforms span deliberately different extremes — clean JSON vs. `batchexecute` positional arrays vs. cookie-only REST vs. reasoning-chain branch trees — proving the Schema and pipeline aren't overfit to one platform.
+**v0.1 — alpha.** The core pipeline, Schema v1, and five adapters (Kimi, Gemini, Grok, DeepSeek, ChatGPT) are working end-to-end in the shipping userscript, verified against live accounts (real conversations exported to disk; the Kimi run was byte-verified by SHA-256). The platforms span deliberately different extremes — clean JSON vs. `batchexecute` positional arrays vs. cookie-only REST vs. reasoning-chain branch trees vs. mixed system/tool/image mapping trees — proving the Schema and pipeline aren't overfit to one platform.
 
 This is honest-status software: the platform matrix below marks a **last-verified date** rather than a permanent ✅, because private APIs change without notice.
 
@@ -25,12 +25,13 @@ This is honest-status software: the platform matrix below marks a **last-verifie
 | **Gemini** (`gemini.google.com`) | `batchexecute` | Cookie + XSRF token | ✅ Working (shipping form) ¹ | 2026-07 |
 | **Grok** (`grok.com`) | REST / JSON | Cookie (session) | ✅ Working (shipping form) | 2026-07 |
 | **DeepSeek** (`chat.deepseek.com`) | REST / JSON | `Authorization: Bearer` (localStorage token) | ✅ Working (shipping form) | 2026-07 |
+| **ChatGPT** (`chatgpt.com`) | REST / JSON | `Authorization: Bearer` (`/api/auth/session` token) | ✅ Working (shipping form) | 2026-07 |
 
 ¹ Gemini conversation detail is fetched 100 turns per request; for conversations beyond that, the older-turns continuation token is inferred from the list RPC's symmetry and still being validated against a live long chat.
 
 Want another platform? See [Writing an adapter](#writing-an-adapter).
 
-## Install & use (Kimi, Gemini, Grok & DeepSeek)
+## Install & use (Kimi, Gemini, Grok, DeepSeek & ChatGPT)
 
 v0.1 ships in two forms with identical behavior (same in-page code, `@ace/app-core`): a **Tampermonkey userscript** and a **Chrome extension**. Neither needs token setup — both run in your logged-in session and pick the right adapter per site.
 
@@ -58,11 +59,11 @@ v0.1 ships in two forms with identical behavior (same in-page code, `@ace/app-co
 
 ### Usage (same for both forms)
 
-1. Go to [kimi.com](https://www.kimi.com/), [gemini.google.com](https://gemini.google.com/), [grok.com](https://grok.com/) **or** [chat.deepseek.com](https://chat.deepseek.com/), log in, and click the **“Export all chats”** button (bottom-right).
+1. Go to [kimi.com](https://www.kimi.com/), [gemini.google.com](https://gemini.google.com/), [grok.com](https://grok.com/), [chat.deepseek.com](https://chat.deepseek.com/) **or** [chatgpt.com](https://chatgpt.com/), log in, and click the **“Export all chats”** button (bottom-right).
 2. A dialog lets you pick the conversation range to export (1-based, inclusive — e.g. 1–100; leave “to” empty for everything) and optionally load the total conversation count.
 3. A `<platform>-export-YYYY-MM-DD.zip` downloads, with Markdown and JSON kept in separate folders:
    ```
-   kimi/            (or gemini/, grok/, deepseek/)
+   kimi/            (or gemini/, grok/, deepseek/, chatgpt/)
    ├── markdown/    one .md per conversation
    └── json/        one .json per conversation
    ```
@@ -113,6 +114,7 @@ packages/
   adapter-gemini/      Second adapter (batchexecute) — proves Schema generality
   adapter-grok/        Third adapter (cookie-only REST, tree-structured messages)
   adapter-deepseek/    Fourth adapter (Bearer REST, reasoning chains + branch tree)
+  adapter-chatgpt/     Fifth adapter (Bearer REST, mapping tree with system/tool/image nodes)
   exporter-markdown/   Human-readable .md per conversation
   exporter-json/       Schema-faithful .json per conversation
   exporter-zip/        Bundles the batch (fflate)
@@ -143,7 +145,7 @@ pnpm schema:json      # regenerate the published JSON Schema
 
 ## Writing an adapter
 
-Implement `PlatformAdapter` in a new `packages/adapter-<name>/`, mapping the platform's responses onto Schema v1, and add anonymized fixtures with a snapshot test. The four existing adapters are worked examples of different extremes: Kimi (clean JSON, tree-structured messages, Bearer token), Gemini (positional `batchexecute` arrays, linear turns, cookie auth), Grok (cookie-only REST, `parentResponseId` message tree, per-message model), and DeepSeek (Bearer REST, single-endpoint detail, `thinking_content` reasoning chains, and a full branch tree where the visible thread is the active path walked from `current_message_id`). If it maps to the same Schema without touching `schema` or `core`, the design is holding.
+Implement `PlatformAdapter` in a new `packages/adapter-<name>/`, mapping the platform's responses onto Schema v1, and add anonymized fixtures with a snapshot test. The five existing adapters are worked examples of different extremes: Kimi (clean JSON, tree-structured messages, Bearer token), Gemini (positional `batchexecute` arrays, linear turns, cookie auth), Grok (cookie-only REST, `parentResponseId` message tree, per-message model), DeepSeek (Bearer REST, single-endpoint detail, `thinking_content` reasoning chains, and a full branch tree where the visible thread is the active path walked from `current_message_id`), and ChatGPT (Bearer token from `/api/auth/session`, offset/limit listing, and a `mapping` tree whose visible thread is walked from `current_node` while system/tool-call scaffolding is filtered out and generated images on `tool` nodes are kept). If it maps to the same Schema without touching `schema` or `core`, the design is holding.
 
 ## Privacy & compliance
 
@@ -156,7 +158,7 @@ Implement `PlatformAdapter` in a new `packages/adapter-<name>/`, mapping the pla
 
 | Version | Scope |
 |---|---|
-| **v0.1** | Schema v1 + Kimi, Gemini, Grok & DeepSeek adapters + MD/JSON/ZIP exporters + userscript (range dialog) + Chrome extension |
+| **v0.1** | Schema v1 + Kimi, Gemini, Grok, DeepSeek & ChatGPT adapters + MD/JSON/ZIP exporters + userscript (range dialog) + Chrome extension |
 | v0.2 | CLI form (incremental backup) + another high-demand platform |
 | v0.3 | Adapter guide + fixture anonymizer + CONTRIBUTING — open community adapters |
 | v0.4+ | Obsidian exporter, more platforms, Chrome Web Store listing |

@@ -13,7 +13,7 @@
 
 ## 项目状态
 
-**v0.1 —— alpha。** 核心管道、Schema v1 与四个适配器（Kimi、Gemini、Grok、DeepSeek）均已在发行的油猴脚本中端到端可用，并经真实账号验证（真实对话导出到磁盘；Kimi 那次运行经 SHA-256 逐字节校验）。这几个平台刻意选了不同的极端——干净的 JSON、`batchexecute` 位置数组、仅靠 cookie 的 REST、带思维链的分支树——证明 Schema 与管道没有过拟合到单一平台。
+**v0.1 —— alpha。** 核心管道、Schema v1 与五个适配器（Kimi、Gemini、Grok、DeepSeek、ChatGPT）均已在发行的油猴脚本中端到端可用，并经真实账号验证（真实对话导出到磁盘；Kimi 那次运行经 SHA-256 逐字节校验）。这几个平台刻意选了不同的极端——干净的 JSON、`batchexecute` 位置数组、仅靠 cookie 的 REST、带思维链的分支树、混合 system/tool/image 的 mapping 树——证明 Schema 与管道没有过拟合到单一平台。
 
 这是一款「诚实状态」的软件：下方平台矩阵标注的是**最近验证日期**，而非永久的 ✅，因为私有 API 会在没有通知的情况下变动。
 
@@ -25,12 +25,13 @@
 | **Gemini** (`gemini.google.com`) | `batchexecute` | Cookie + XSRF token | ✅ 可用（发行形态）¹ | 2026-07 |
 | **Grok** (`grok.com`) | REST / JSON | Cookie（会话） | ✅ 可用（发行形态） | 2026-07 |
 | **DeepSeek** (`chat.deepseek.com`) | REST / JSON | `Authorization: Bearer`（localStorage token） | ✅ 可用（发行形态） | 2026-07 |
+| **ChatGPT** (`chatgpt.com`) | REST / JSON | `Authorization: Bearer`（`/api/auth/session` token） | ✅ 可用（发行形态） | 2026-07 |
 
 ¹ Gemini 对话详情每次请求拉取 100 轮；超过 100 轮的对话依赖“更旧轮次”续页 token，该 token 位置系从列表 RPC 的对称结构推断，尚待真实超长对话验证。
 
 想要其他平台？见[编写适配器](#编写适配器)。
 
-## 安装与使用（Kimi、Gemini、Grok 与 DeepSeek）
+## 安装与使用（Kimi、Gemini、Grok、DeepSeek 与 ChatGPT）
 
 v0.1 提供两种发行形态，功能完全一致（同一份页内代码 `@ace/app-core`）：**Tampermonkey 油猴脚本**和 **Chrome 扩展**。都无需配置 token，运行在你已登录的会话中，并按站点自动选择对应适配器。
 
@@ -58,11 +59,11 @@ v0.1 提供两种发行形态，功能完全一致（同一份页内代码 `@ace
 
 ### 使用（两种形态相同）
 
-1. 打开 [kimi.com](https://www.kimi.com/)、[gemini.google.com](https://gemini.google.com/)、[grok.com](https://grok.com/) **或** [chat.deepseek.com](https://chat.deepseek.com/) 登录，点击右下角的 **“Export all chats”** 按钮。
+1. 打开 [kimi.com](https://www.kimi.com/)、[gemini.google.com](https://gemini.google.com/)、[grok.com](https://grok.com/)、[chat.deepseek.com](https://chat.deepseek.com/) **或** [chatgpt.com](https://chatgpt.com/) 登录，点击右下角的 **“Export all chats”** 按钮。
 2. 弹出的对话框可选择导出的对话区间（从 1 开始、含首尾，如 1–100；“to” 留空则导出全部），也可按需加载对话总数。
 3. 会下载一个 `<platform>-export-YYYY-MM-DD.zip`，Markdown 与 JSON 分目录存放：
    ```
-   kimi/            （或 gemini/、grok/、deepseek/）
+   kimi/            （或 gemini/、grok/、deepseek/、chatgpt/）
    ├── markdown/    每条对话一个 .md
    └── json/        每条对话一个 .json
    ```
@@ -113,6 +114,7 @@ packages/
   adapter-gemini/      第二个适配器（batchexecute）——证明 Schema 的通用性
   adapter-grok/        第三个适配器（仅 cookie 的 REST、树形消息）
   adapter-deepseek/    第四个适配器（Bearer REST、思维链 + 分支树）
+  adapter-chatgpt/     第五个适配器（Bearer REST、含 system/tool/image 节点的 mapping 树）
   exporter-markdown/   每条对话一个可读的 .md
   exporter-json/       每条对话一个忠于 Schema 的 .json
   exporter-zip/        打包整批（fflate）
@@ -143,7 +145,7 @@ pnpm schema:json      # 重新生成发布用的 JSON Schema
 
 ## 编写适配器
 
-在新的 `packages/adapter-<name>/` 中实现 `PlatformAdapter`，把平台的响应映射到 Schema v1，并附带匿名化 fixture 与一个快照测试。现有四个适配器是不同极端的范例：Kimi（干净的 JSON、树形消息、Bearer token）、Gemini（基于位置的 `batchexecute` 数组、线性回合、cookie 认证）、Grok（仅 cookie 的 REST、`parentResponseId` 消息树、逐条消息级 model）与 DeepSeek（Bearer REST、单端点详情、`thinking_content` 思维链、以及保留全部分支的消息树——可见主线是从 `current_message_id` 沿父链上走出的活跃路径）。如果它在不触碰 `schema` 或 `core` 的前提下就能映射到同一份 Schema，说明设计站得住。
+在新的 `packages/adapter-<name>/` 中实现 `PlatformAdapter`，把平台的响应映射到 Schema v1，并附带匿名化 fixture 与一个快照测试。现有五个适配器是不同极端的范例：Kimi（干净的 JSON、树形消息、Bearer token）、Gemini（基于位置的 `batchexecute` 数组、线性回合、cookie 认证）、Grok（仅 cookie 的 REST、`parentResponseId` 消息树、逐条消息级 model）、DeepSeek（Bearer REST、单端点详情、`thinking_content` 思维链、以及保留全部分支的消息树——可见主线是从 `current_message_id` 沿父链上走出的活跃路径）与 ChatGPT（从 `/api/auth/session` 取 Bearer token、offset/limit 列表分页、以及一棵 `mapping` 树——可见主线从 `current_node` 走出，同时过滤掉 system/tool-call 脚手架，并保留 `tool` 节点上生成的图像）。如果它在不触碰 `schema` 或 `core` 的前提下就能映射到同一份 Schema，说明设计站得住。
 
 ## 隐私与合规
 
@@ -156,7 +158,7 @@ pnpm schema:json      # 重新生成发布用的 JSON Schema
 
 | 版本 | 范围 |
 |---|---|
-| **v0.1** | Schema v1 + Kimi、Gemini、Grok 与 DeepSeek 适配器 + MD/JSON/ZIP 导出器 + 油猴脚本（区间对话框）+ Chrome 扩展 |
+| **v0.1** | Schema v1 + Kimi、Gemini、Grok、DeepSeek 与 ChatGPT 适配器 + MD/JSON/ZIP 导出器 + 油猴脚本（区间对话框）+ Chrome 扩展 |
 | v0.2 | CLI 形态（增量备份）+ 另一个高需求平台 |
 | v0.3 | 适配器指南 + fixture 匿名化工具 + CONTRIBUTING —— 开放社区适配器 |
 | v0.4+ | Obsidian 导出器、更多平台、Chrome Web Store 上架 |

@@ -242,6 +242,33 @@ interface PlatformAdapter {
 
 **通用性结论**：第四个平台在认证（Bearer）、传输（REST/JSON）、数据模型（保留全分支的消息树 + 思维链 + 活跃路径回溯）上又是一组新组合，仍映射到**同一份 Schema v1**、复用**同一套接口与管道**，`schema`/`core` 零改动。由 `packages/adapter-deepseek` + `fixtures/deepseek/` 快照测试固化，并经真实账号 dogfood 验证。
 
+## 13. ChatGPT 适配器：真实 API 发现（第五个适配器）
+
+> 2026-07 通过 CDP 登录态浏览器实测确认：ChatGPT 的认证/列表/详情三个端点均返回 200、真实数据，并用真实账号完整 dogfood（3 条会话导出，含图像生成会话、引用、附件，0 失败）。这是第五种「极端」——认证像 DeepSeek/Kimi（**Bearer token**）、传输像 Grok（**规整 REST/JSON**），但数据模型独一档：**`mapping` 消息树混合 system/tool/image 多类节点**，可见主线需从 `current_node` 沿父链回溯，且图像输出由 `role:"tool"` 节点承载。再次验证 Schema v1 不是过拟合。
+
+**基址与协议**：`https://chatgpt.com`，干净 REST/JSON，无信封包裹（payload 直出）。前端是 SPA，软导航不触发独立列表请求，需直接 fetch 探测。
+
+**认证（关键）**：**Bearer token**，但来源与其他家都不同——`GET /api/auth/session`（仅 `credentials:"include"` Cookie 即可）返回 `{accessToken(JWT), user, expires}`，取 `accessToken` 作为后续请求头 `Authorization: Bearer <accessToken>`。token 获取异步 memoize（首次 listPage 前拉取一次）。
+
+**两个端点**：
+
+- **列表**：`GET /backend-api/conversations?offset=0&limit=28&order=updated` → `{items:[{id,title,create_time,update_time,...}], total, limit, offset}`。**offset/limit 分页**（非游标）：下一页 offset = 当前 offset + items.length，`next>=total` 或 items 空即末页。注意列表的 `create_time`/`update_time` 是 **ISO 8601 字符串**。
+- **详情**：`GET /backend-api/conversation/{id}` → `{title, create_time, update_time, current_node, default_model_slug, mapping}`。注意详情的时间戳是**浮点 epoch 秒**（与列表不同），解析需兼容两种格式。
+
+**解析要点（直接决定实现）**：
+
+- **`mapping` 消息树 + 活跃路径（本适配器核心）**：`mapping` = `{nodeId:{id, message, parent, children[]}}`；`current_node` 是活跃叶子，从它沿 `parent` 回溯到 root 再 reverse 即可见主线（带防环 guard；fallback 按 create_time 排序）。
+- **可见性过滤（多重条件）**：保留 role∈{user, assistant, **tool**} + `recipient==="all"` + 非 `is_visually_hidden_from_conversation` + content_type∈{text, multimodal_text} 且非空。四重条件分别剔除：system/内部节点（role）、tool-call prompt（recipient 指向工具名非 all）、tool 文字状态消息（hidden）、memory 等 `model_editable_context`（content_type）。
+- **图像输出（dogfood 关键发现）**：ChatGPT 生成的图像由 `role:"tool"`（name `t2uay3k...`即 dalle 工具）+ `recipient:"all"` + `content_type:"multimodal_text"` + `image_asset_pointer`（asset_pointer `sediment://file_...`）节点承载。因此 **`tool` 角色必须放行并映射为 assistant**——若按常规仅保留 user/assistant，助手的图像回复会整个丢失（静态 fixture 无法暴露、仅 dogfood 才发现的真实场景 bug）。tool 的文字状态消息都是 hidden，由 hidden 检查兼住。
+- **线性重链（re-link）**：可见消息间夹着被剔除的 hidden system/tool 节点，原始 `parent` 会指向被剔除节点，故 `parentId` 不用原始 parent，改为沿可见消息序列线性重链（首条 parentId=null，其余指向前一条），再反推 childrenIds。
+- `role`：`assistant`/`tool`→assistant、`system`→system、其余→user；`content.parts` 中 string→text part，image_asset_pointer→image part 并注册 attachment。
+- 时间戳：兼容双格式——`number` 走 `new Date(Math.round(sec*1000)).toISOString()`（详情），`string` 走 `Date.parse` 再 toISOString（列表）。
+- 引用：`metadata.content_references[type==="grouped_webpages"].items` → Citation（按 url 去重）；`metadata.citations` 常为空数组。
+- 附件：用户上传的 `metadata.attachments[]={id, name, size, mime_type}` → Attachment（`sizeBytes`=size、`mimeType`=mime_type）。
+- `model` = `default_model_slug`；`sourceUrl` = `https://chatgpt.com/c/${id}`。
+
+**通用性结论**：第五个平台在 token 来源（`/api/auth/session`）、分页（offset/limit）、数据模型（含 system/tool/image 多类节点的 mapping 树 + 图像由 tool 节点承载）上又是一组新组合，仍映射到**同一份 Schema v1**、复用**同一套接口与管道**，`schema`/`core` 零改动。由 `packages/adapter-chatgpt` + `fixtures/chatgpt/` 快照测试固化，并经真实账号 dogfood 验证（图像丢失 bug 即在此阶段被发现并修复）。
+
 ## 附：产品形态决策
 
 首发采用**核心库 + 多形态**架构：`core` 与形态解耦，v0.1 先出油猴脚本形态（免 token、天然带登录态、安装门槛低），浏览器扩展和 CLI 后续跟进。

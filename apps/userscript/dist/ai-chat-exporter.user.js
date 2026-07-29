@@ -1,11 +1,11 @@
 // ==UserScript==
-// @name               AI Chat Exporter (Kimi & Gemini)
-// @name:zh-CN         AI 对话导出（Kimi & Gemini）
+// @name               AI Chat Exporter (Kimi, Gemini, Grok, DeepSeek & ChatGPT)
+// @name:zh-CN         AI 对话导出（Kimi、Gemini、Grok、DeepSeek & ChatGPT）
 // @namespace          https://github.com/wanda1416/ai-chat-exporter
 // @version            0.1.0
 // @author             wanda1416
-// @description        Batch-export your Kimi & Gemini conversations to Markdown + JSON, zipped. Pick a range, one click — runs entirely in your browser, no data sent anywhere.
-// @description:zh-CN  一键批量导出 Kimi / Gemini 全部对话为 Markdown + JSON 并打包 zip。支持导出区间选择，纯本地运行，数据不离开浏览器。
+// @description        Batch-export your Kimi, Gemini, Grok, DeepSeek & ChatGPT conversations to Markdown + JSON, zipped. Pick a range, one click — runs entirely in your browser, no data sent anywhere.
+// @description:zh-CN  一键批量导出 Kimi / Gemini / Grok / DeepSeek / ChatGPT 全部对话为 Markdown + JSON 并打包 zip。支持导出区间选择，纯本地运行，数据不离开浏览器。
 // @license            MIT
 // @homepageURL        https://github.com/wanda1416/ai-chat-exporter
 // @supportURL         https://github.com/wanda1416/ai-chat-exporter/issues
@@ -13,6 +13,9 @@
 // @updateURL          https://raw.githubusercontent.com/wanda1416/ai-chat-exporter/master/apps/userscript/dist/ai-chat-exporter.user.js
 // @match              https://www.kimi.com/*
 // @match              https://gemini.google.com/*
+// @match              https://grok.com/*
+// @match              https://chat.deepseek.com/*
+// @match              https://chatgpt.com/*
 // @grant              none
 // @run-at             document-idle
 // ==/UserScript==
@@ -25,7 +28,545 @@
   var __defProp = Object.defineProperty;
   var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
   var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-  const PLATFORM$1 = "gemini";
+  const BASE_URL$3 = "https://chatgpt.com";
+  const DEFAULT_PAGE_SIZE$3 = 28;
+  class ChatGPTClient {
+    constructor(options = {}) {
+      __publicField(this, "fetchImpl");
+      __publicField(this, "pageSize");
+      __publicField(this, "explicitToken");
+      __publicField(this, "cachedToken");
+      this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
+      this.pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE$3;
+      this.explicitToken = options.token;
+    }
+    /** Resolves the Bearer token from the override or the session endpoint. */
+    async token() {
+      if (this.explicitToken) return this.explicitToken;
+      if (this.cachedToken) return this.cachedToken;
+      try {
+        const response = await this.fetchImpl(`${BASE_URL$3}/api/auth/session`, {
+          method: "GET",
+          credentials: "include",
+          headers: { accept: "application/json" }
+        });
+        if (!response.ok) return void 0;
+        const session = await response.json();
+        this.cachedToken = session.accessToken || void 0;
+        return this.cachedToken;
+      } catch {
+        return void 0;
+      }
+    }
+    async get(path) {
+      const token = await this.token();
+      const headers = { accept: "application/json" };
+      if (token) headers.authorization = `Bearer ${token}`;
+      const response = await this.fetchImpl(`${BASE_URL$3}${path}`, {
+        method: "GET",
+        credentials: "include",
+        headers
+      });
+      if (!response.ok) {
+        throw new Error(`ChatGPT GET ${path} failed: ${response.status} ${response.statusText}`);
+      }
+      return await response.json();
+    }
+    /** One page of the sidebar history, starting at `offset`. */
+    listPage(offset) {
+      const params = new URLSearchParams({
+        offset: String(offset),
+        limit: String(this.pageSize),
+        order: "updated"
+      });
+      return this.get(`/backend-api/conversations?${params.toString()}`);
+    }
+    /** The full mapping tree for a conversation (all branches, one round-trip). */
+    conversationDetail(id) {
+      return this.get(`/backend-api/conversation/${encodeURIComponent(id)}`);
+    }
+  }
+  const PLATFORM$4 = "chatgpt";
+  const VISIBLE_CONTENT_TYPES = /* @__PURE__ */ new Set(["text", "multimodal_text"]);
+  function toRole$3(role) {
+    if (role === "assistant" || role === "tool") return "assistant";
+    if (role === "system") return "system";
+    return "user";
+  }
+  function toIso$1(value) {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return new Date(Math.round(value * 1e3)).toISOString();
+    }
+    if (typeof value === "string" && value) {
+      const ms = Date.parse(value);
+      if (!Number.isNaN(ms)) return new Date(ms).toISOString();
+    }
+    return void 0;
+  }
+  function isVisible(raw) {
+    var _a2, _b2, _c;
+    const role = (_a2 = raw.author) == null ? void 0 : _a2.role;
+    if (role !== "user" && role !== "assistant" && role !== "tool") return false;
+    if (raw.recipient && raw.recipient !== "all") return false;
+    if ((_b2 = raw.metadata) == null ? void 0 : _b2.is_visually_hidden_from_conversation) return false;
+    const contentType = (_c = raw.content) == null ? void 0 : _c.content_type;
+    return Boolean(contentType && VISIBLE_CONTENT_TYPES.has(contentType));
+  }
+  function imageAttachment(part) {
+    const attachment = { id: part.asset_pointer };
+    if (typeof part.size_bytes === "number" && Number.isFinite(part.size_bytes)) {
+      attachment.sizeBytes = part.size_bytes;
+    }
+    return attachment;
+  }
+  function parseContent(content, attachments, seen) {
+    const parts = [];
+    for (const part of (content == null ? void 0 : content.parts) ?? []) {
+      if (typeof part === "string") {
+        if (part.trim()) parts.push({ type: "text", text: part });
+        continue;
+      }
+      if ((part == null ? void 0 : part.content_type) === "image_asset_pointer" && part.asset_pointer) {
+        const id = part.asset_pointer;
+        if (!seen.has(id)) {
+          seen.add(id);
+          attachments.push(imageAttachment(part));
+        }
+        parts.push({ type: "image", attachmentId: id });
+      }
+    }
+    return parts;
+  }
+  function parseCitations$2(refs) {
+    const citations = [];
+    const seen = /* @__PURE__ */ new Set();
+    for (const ref of refs ?? []) {
+      if (ref.type !== "grouped_webpages") continue;
+      for (const item of ref.items ?? []) {
+        const key = item.url ?? item.title ?? "";
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        const citation = {};
+        if (item.title) citation.title = item.title;
+        if (item.url) citation.url = item.url;
+        if (item.snippet) citation.snippet = item.snippet;
+        citations.push(citation);
+      }
+    }
+    return citations;
+  }
+  function parseAttachments$3(raw, attachments, seen) {
+    const ids = [];
+    for (const [index, file] of (raw ?? []).entries()) {
+      const id = file.id || file.name || `attachment-${index}`;
+      ids.push(id);
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const attachment = { id };
+      if (file.name) attachment.name = file.name;
+      if (typeof file.size === "number" && Number.isFinite(file.size)) {
+        attachment.sizeBytes = file.size;
+      }
+      if (file.mime_type) attachment.mimeType = file.mime_type;
+      attachments.push(attachment);
+    }
+    return ids;
+  }
+  function parseMessage$2(raw, attachments, seen) {
+    var _a2;
+    const content = parseContent(raw.content, attachments, seen);
+    if (!content.length) return null;
+    const message = {
+      id: String(raw.id ?? ""),
+      role: toRole$3((_a2 = raw.author) == null ? void 0 : _a2.role),
+      content
+    };
+    const timestamp = toIso$1(raw.create_time);
+    if (timestamp) message.timestamp = timestamp;
+    const metadata = raw.metadata ?? {};
+    if (metadata.model_slug && message.role === "assistant") {
+      message.model = metadata.model_slug;
+    }
+    const citations = parseCitations$2(metadata.content_references);
+    if (citations.length) message.citations = citations;
+    const attachmentIds = parseAttachments$3(metadata.attachments, attachments, seen);
+    if (attachmentIds.length) message.attachments = attachmentIds;
+    return message;
+  }
+  function activePath$1(mapping, currentNode) {
+    if (currentNode && mapping[currentNode]) {
+      const chain = [];
+      const guard = /* @__PURE__ */ new Set();
+      let cursor = currentNode;
+      while (typeof cursor === "string" && mapping[cursor] && !guard.has(cursor)) {
+        guard.add(cursor);
+        const node = mapping[cursor];
+        if (node.message) chain.push(node.message);
+        cursor = node.parent ?? null;
+      }
+      return chain.reverse();
+    }
+    return Object.values(mapping).map((node) => node.message).filter((message) => Boolean(message)).sort((a, b) => (a.create_time ?? 0) - (b.create_time ?? 0));
+  }
+  function linkChildren$3(messages) {
+    const childrenOf = /* @__PURE__ */ new Map();
+    for (const m of messages) {
+      if (m.parentId) {
+        const list = childrenOf.get(m.parentId) ?? [];
+        list.push(m.id);
+        childrenOf.set(m.parentId, list);
+      }
+    }
+    for (const m of messages) {
+      const children = childrenOf.get(m.id);
+      if (children == null ? void 0 : children.length) m.childrenIds = children;
+    }
+  }
+  function parseConversationList$3(page) {
+    const metas = [];
+    for (const item of page.items ?? []) {
+      if (!item.id) continue;
+      const meta = {
+        id: item.id,
+        platform: PLATFORM$4,
+        title: item.title ?? ""
+      };
+      const createdAt = toIso$1(item.create_time);
+      const updatedAt = toIso$1(item.update_time);
+      if (createdAt) meta.createdAt = createdAt;
+      if (updatedAt) meta.updatedAt = updatedAt;
+      metas.push(meta);
+    }
+    return metas;
+  }
+  function nextOffset(page) {
+    const items = page.items ?? [];
+    if (!items.length) return void 0;
+    const next = (page.offset ?? 0) + items.length;
+    const total = page.total ?? 0;
+    if (total && next >= total) return void 0;
+    return next;
+  }
+  function toConversation$4(conversationId, detail, meta) {
+    var _a2;
+    const mapping = detail.mapping ?? {};
+    const ordered = activePath$1(mapping, detail.current_node);
+    const messages = [];
+    const attachments = [];
+    const seenAttachment = /* @__PURE__ */ new Set();
+    for (const raw of ordered) {
+      if (!isVisible(raw)) continue;
+      const message = parseMessage$2(raw, attachments, seenAttachment);
+      if (message) messages.push(message);
+    }
+    messages.forEach((message, index) => {
+      message.parentId = index === 0 ? null : messages[index - 1].id;
+    });
+    linkChildren$3(messages);
+    const firstUserPart = (_a2 = messages.find((m) => m.role === "user")) == null ? void 0 : _a2.content.find((c) => c.type === "text");
+    const fallbackTitle = (firstUserPart == null ? void 0 : firstUserPart.type) === "text" ? firstUserPart.text : "";
+    const conversation = {
+      schemaVersion: "1",
+      id: conversationId,
+      platform: PLATFORM$4,
+      title: detail.title || (meta == null ? void 0 : meta.title) || fallbackTitle,
+      messages
+    };
+    if (detail.default_model_slug) conversation.model = detail.default_model_slug;
+    const createdAt = (meta == null ? void 0 : meta.createdAt) ?? toIso$1(detail.create_time);
+    const updatedAt = (meta == null ? void 0 : meta.updatedAt) ?? toIso$1(detail.update_time);
+    if (createdAt) conversation.createdAt = createdAt;
+    if (updatedAt) conversation.updatedAt = updatedAt;
+    if (attachments.length) conversation.attachments = attachments;
+    conversation.sourceUrl = `https://chatgpt.com/c/${conversationId}`;
+    return conversation;
+  }
+  const MAX_PAGES$4 = 1e3;
+  class ChatGPTAdapter {
+    constructor(options = {}) {
+      __publicField(this, "platform", PLATFORM$4);
+      __publicField(this, "client");
+      __publicField(this, "metaCache", /* @__PURE__ */ new Map());
+      this.client = new ChatGPTClient(options);
+    }
+    detect() {
+      if (typeof location === "undefined") return false;
+      return /(^|\.)chatgpt\.com$/.test(location.hostname);
+    }
+    async *listConversations() {
+      let offset = 0;
+      for (let page = 0; page < MAX_PAGES$4; page++) {
+        const data = await this.client.listPage(offset);
+        const metas = parseConversationList$3(data);
+        for (const meta of metas) {
+          this.metaCache.set(meta.id, meta);
+          yield meta;
+        }
+        const next = nextOffset(data);
+        if (next === void 0) break;
+        offset = next;
+      }
+    }
+    async fetchConversation(id) {
+      const data = await this.client.conversationDetail(id);
+      const meta = this.metaCache.get(id);
+      return toConversation$4(id, data, {
+        title: meta == null ? void 0 : meta.title,
+        createdAt: meta == null ? void 0 : meta.createdAt,
+        updatedAt: meta == null ? void 0 : meta.updatedAt
+      });
+    }
+  }
+  const BASE_URL$2 = "https://chat.deepseek.com/api/v0/";
+  const DEFAULT_PAGE_SIZE$2 = 100;
+  class DeepSeekClient {
+    constructor(options = {}) {
+      __publicField(this, "fetchImpl");
+      __publicField(this, "pageSize");
+      __publicField(this, "explicitToken");
+      this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
+      this.pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE$2;
+      this.explicitToken = options.token;
+    }
+    /** Resolves the Bearer token from the override or localStorage. */
+    token() {
+      var _a2;
+      if (this.explicitToken) return this.explicitToken;
+      try {
+        const raw = (_a2 = globalThis.localStorage) == null ? void 0 : _a2.getItem("userToken");
+        if (!raw) return void 0;
+        const parsed = JSON.parse(raw);
+        return (parsed == null ? void 0 : parsed.value) || void 0;
+      } catch {
+        return void 0;
+      }
+    }
+    async get(path) {
+      var _a2, _b2, _c;
+      const token = this.token();
+      const headers = { accept: "application/json" };
+      if (token) headers.authorization = `Bearer ${token}`;
+      const response = await this.fetchImpl(`${BASE_URL$2}${path}`, {
+        method: "GET",
+        credentials: "include",
+        headers
+      });
+      if (!response.ok) {
+        throw new Error(`DeepSeek GET ${path} failed: ${response.status} ${response.statusText}`);
+      }
+      const envelope = await response.json();
+      if (envelope.code !== 0 || ((_a2 = envelope.data) == null ? void 0 : _a2.biz_code) !== 0) {
+        throw new Error(`DeepSeek GET ${path} error: ${envelope.msg || ((_b2 = envelope.data) == null ? void 0 : _b2.biz_msg) || "unknown"}`);
+      }
+      return ((_c = envelope.data) == null ? void 0 : _c.biz_data) ?? {};
+    }
+    /** One page of the sidebar history. `beforeSeqId` continues a previous page. */
+    fetchPage(beforeSeqId) {
+      const params = new URLSearchParams({ count: String(this.pageSize) });
+      if (beforeSeqId !== void 0) params.set("before_seq_id", String(beforeSeqId));
+      return this.get(`chat_session/fetch_page?${params.toString()}`);
+    }
+    /** The full message set for a conversation (all branches, one round-trip). */
+    historyMessages(chatSessionId) {
+      const params = new URLSearchParams({ chat_session_id: chatSessionId });
+      return this.get(`chat/history_messages?${params.toString()}`);
+    }
+  }
+  const PLATFORM$3 = "deepseek";
+  function toRole$2(role) {
+    const r = (role ?? "").toLowerCase();
+    if (r === "assistant") return "assistant";
+    if (r === "system") return "system";
+    return "user";
+  }
+  function toIso(seconds) {
+    if (typeof seconds !== "number" || !Number.isFinite(seconds)) return void 0;
+    return new Date(Math.round(seconds * 1e3)).toISOString();
+  }
+  function parseCitations$1(results) {
+    const citations = [];
+    const seen = /* @__PURE__ */ new Set();
+    for (const result of results ?? []) {
+      const key = result.url ?? result.title ?? "";
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      const citation = {};
+      if (result.title) citation.title = result.title;
+      if (result.url) citation.url = result.url;
+      if (result.snippet) citation.snippet = result.snippet;
+      citations.push(citation);
+    }
+    return citations;
+  }
+  function parseAttachments$2(files) {
+    const attachments = [];
+    for (const [index, file] of (files ?? []).entries()) {
+      const attachment = { id: file.id || file.file_name || `file-${index}` };
+      if (file.file_name) attachment.name = file.file_name;
+      if (typeof file.file_size === "number" && Number.isFinite(file.file_size)) {
+        attachment.sizeBytes = file.file_size;
+      }
+      attachments.push(attachment);
+    }
+    return attachments;
+  }
+  function parseMessage$1(raw) {
+    const id = String(raw.message_id ?? "");
+    const message = {
+      id,
+      role: toRole$2(raw.role),
+      content: raw.content ? [{ type: "text", text: raw.content }] : []
+    };
+    const timestamp = toIso(raw.inserted_at);
+    if (timestamp) message.timestamp = timestamp;
+    if (raw.model && message.role === "assistant") message.model = raw.model;
+    if (raw.thinking_content) {
+      const reasoning = { content: raw.thinking_content };
+      if (typeof raw.thinking_elapsed_secs === "number" && raw.thinking_elapsed_secs > 0) {
+        reasoning.summary = `Thought for ${Math.round(raw.thinking_elapsed_secs)}s`;
+      }
+      message.reasoning = reasoning;
+    }
+    const citations = parseCitations$1(raw.search_results);
+    if (citations.length) message.citations = citations;
+    const attachments = parseAttachments$2(raw.files);
+    if (attachments.length) message.attachments = attachments.map((a) => a.id);
+    if (raw.parent_id !== void 0) {
+      message.parentId = raw.parent_id === null ? null : String(raw.parent_id);
+    }
+    return { message, attachments };
+  }
+  function activePath(messages, currentId) {
+    const byId = /* @__PURE__ */ new Map();
+    for (const m of messages) {
+      if (typeof m.message_id === "number") byId.set(m.message_id, m);
+    }
+    if (currentId !== void 0 && byId.has(currentId)) {
+      const chain = [];
+      const guard = /* @__PURE__ */ new Set();
+      let cursor = currentId;
+      while (typeof cursor === "number" && byId.has(cursor) && !guard.has(cursor)) {
+        guard.add(cursor);
+        const node = byId.get(cursor);
+        chain.push(node);
+        cursor = node.parent_id ?? null;
+      }
+      return chain.reverse();
+    }
+    return [...messages].sort((a, b) => (a.message_id ?? 0) - (b.message_id ?? 0));
+  }
+  function linkChildren$2(messages) {
+    const childrenOf = /* @__PURE__ */ new Map();
+    for (const m of messages) {
+      if (m.parentId) {
+        const list = childrenOf.get(m.parentId) ?? [];
+        list.push(m.id);
+        childrenOf.set(m.parentId, list);
+      }
+    }
+    for (const m of messages) {
+      const children = childrenOf.get(m.id);
+      if (children == null ? void 0 : children.length) m.childrenIds = children;
+    }
+  }
+  function parseConversationList$2(data) {
+    const metas = [];
+    for (const session of data.chat_sessions ?? []) {
+      if (!session.id) continue;
+      const meta = {
+        id: session.id,
+        platform: PLATFORM$3,
+        title: session.title ?? ""
+      };
+      const createdAt = toIso(session.inserted_at);
+      const updatedAt = toIso(session.updated_at);
+      if (createdAt) meta.createdAt = createdAt;
+      if (updatedAt) meta.updatedAt = updatedAt;
+      metas.push(meta);
+    }
+    return metas;
+  }
+  function hasMore(data) {
+    return Boolean(data.has_more);
+  }
+  function lastSeqId(data) {
+    var _a2;
+    const sessions = data.chat_sessions;
+    if (!(sessions == null ? void 0 : sessions.length)) return void 0;
+    return (_a2 = sessions[sessions.length - 1]) == null ? void 0 : _a2.seq_id;
+  }
+  function toConversation$3(conversationId, data, meta) {
+    var _a2;
+    const session = data.chat_session ?? {};
+    const ordered = activePath(data.chat_messages ?? [], session.current_message_id);
+    const messages = [];
+    const attachments = [];
+    const seenAttachment = /* @__PURE__ */ new Set();
+    for (const raw of ordered) {
+      const parsed = parseMessage$1(raw);
+      messages.push(parsed.message);
+      for (const att of parsed.attachments) {
+        if (seenAttachment.has(att.id)) continue;
+        seenAttachment.add(att.id);
+        attachments.push(att);
+      }
+    }
+    linkChildren$2(messages);
+    const firstUserPart = (_a2 = messages.find((m) => m.role === "user")) == null ? void 0 : _a2.content.find((c) => c.type === "text");
+    const fallbackTitle = (firstUserPart == null ? void 0 : firstUserPart.type) === "text" ? firstUserPart.text : "";
+    const conversation = {
+      schemaVersion: "1",
+      id: conversationId,
+      platform: PLATFORM$3,
+      title: session.title || (meta == null ? void 0 : meta.title) || fallbackTitle,
+      messages
+    };
+    const createdAt = (meta == null ? void 0 : meta.createdAt) ?? toIso(session.inserted_at);
+    const updatedAt = (meta == null ? void 0 : meta.updatedAt) ?? toIso(session.updated_at);
+    if (createdAt) conversation.createdAt = createdAt;
+    if (updatedAt) conversation.updatedAt = updatedAt;
+    if (attachments.length) conversation.attachments = attachments;
+    conversation.sourceUrl = `https://chat.deepseek.com/a/chat/s/${conversationId}`;
+    return conversation;
+  }
+  const MAX_PAGES$3 = 1e3;
+  class DeepSeekAdapter {
+    constructor(options = {}) {
+      __publicField(this, "platform", PLATFORM$3);
+      __publicField(this, "client");
+      __publicField(this, "metaCache", /* @__PURE__ */ new Map());
+      this.client = new DeepSeekClient(options);
+    }
+    detect() {
+      if (typeof location === "undefined") return false;
+      return /(^|\.)chat\.deepseek\.com$/.test(location.hostname);
+    }
+    async *listConversations() {
+      let beforeSeqId;
+      for (let page = 0; page < MAX_PAGES$3; page++) {
+        const data = await this.client.fetchPage(beforeSeqId);
+        const metas = parseConversationList$2(data);
+        for (const meta of metas) {
+          this.metaCache.set(meta.id, meta);
+          yield meta;
+        }
+        if (!hasMore(data) || metas.length === 0) break;
+        const next = lastSeqId(data);
+        if (next === void 0) break;
+        beforeSeqId = next;
+      }
+    }
+    async fetchConversation(id) {
+      const data = await this.client.historyMessages(id);
+      const meta = this.metaCache.get(id);
+      return toConversation$3(id, data, {
+        title: meta == null ? void 0 : meta.title,
+        createdAt: meta == null ? void 0 : meta.createdAt,
+        updatedAt: meta == null ? void 0 : meta.updatedAt
+      });
+    }
+  }
+  const PLATFORM$2 = "gemini";
   const asArray = (v) => Array.isArray(v) ? v : [];
   const asString = (v) => typeof v === "string" && v.length > 0 ? v : void 0;
   const at = (v, i) => Array.isArray(v) ? v[i] : void 0;
@@ -64,7 +605,7 @@
     }
     throw new Error(`Gemini batchexecute response had no "${rpcid}" payload.`);
   }
-  function parseConversationList(payload) {
+  function parseConversationList$1(payload) {
     const items = asArray(at(payload, 2));
     const metas = [];
     for (const item of items) {
@@ -72,7 +613,7 @@
       if (!id) continue;
       const meta = {
         id,
-        platform: PLATFORM$1,
+        platform: PLATFORM$2,
         title: asString(at(item, 1)) ?? ""
       };
       const createdAt = isoFromTuple(at(item, 5));
@@ -81,7 +622,7 @@
     }
     return metas;
   }
-  function nextPageToken(payload) {
+  function nextPageToken$1(payload) {
     return asString(at(payload, 1));
   }
   function detailTurns(payload) {
@@ -131,7 +672,7 @@
     }
     return messages;
   }
-  function toConversation$1(conversationId, payload, title) {
+  function toConversation$2(conversationId, payload, title) {
     var _a2, _b2, _c;
     const turns = [...detailTurns(payload)].sort((a, b) => {
       const ta = turnTime(a);
@@ -146,7 +687,7 @@
     const conversation = {
       schemaVersion: "1",
       id: conversationId,
-      platform: PLATFORM$1,
+      platform: PLATFORM$2,
       title: title ?? derivedTitle,
       messages
     };
@@ -230,10 +771,10 @@
       return this.call(RPC_DETAIL, [cid, DETAIL_PAGE_SIZE, pageToken ?? null, 1, [0], [4], null, 1]);
     }
   }
-  const MAX_PAGES$1 = 1e3;
+  const MAX_PAGES$2 = 1e3;
   class GeminiAdapter {
     constructor(options = {}) {
-      __publicField(this, "platform", PLATFORM$1);
+      __publicField(this, "platform", PLATFORM$2);
       __publicField(this, "client");
       __publicField(this, "titles", /* @__PURE__ */ new Map());
       this.client = new GeminiClient(options);
@@ -244,14 +785,14 @@
     }
     async *listConversations() {
       let pageToken;
-      for (let page = 0; page < MAX_PAGES$1; page++) {
+      for (let page = 0; page < MAX_PAGES$2; page++) {
         const payload = await this.client.listConversations(pageToken);
-        const metas = parseConversationList(payload);
+        const metas = parseConversationList$1(payload);
         for (const meta of metas) {
           this.titles.set(meta.id, meta.title);
           yield meta;
         }
-        pageToken = nextPageToken(payload);
+        pageToken = nextPageToken$1(payload);
         if (!pageToken || metas.length === 0) break;
       }
     }
@@ -259,7 +800,7 @@
       const allTurns = [];
       const seen = /* @__PURE__ */ new Set();
       let pageToken;
-      for (let page = 0; page < MAX_PAGES$1; page++) {
+      for (let page = 0; page < MAX_PAGES$2; page++) {
         const payload = await this.client.getConversation(id, pageToken);
         const turns = detailTurns(payload);
         for (const turn of turns) {
@@ -272,7 +813,238 @@
         if (!pageToken || turns.length === 0) break;
       }
       const combined = [allTurns, null, null, []];
-      return toConversation$1(id, combined, this.titles.get(id));
+      return toConversation$2(id, combined, this.titles.get(id));
+    }
+  }
+  const BASE_URL$1 = "https://grok.com/rest/";
+  const DEFAULT_PAGE_SIZE$1 = 30;
+  class GrokClient {
+    constructor(options = {}) {
+      __publicField(this, "fetchImpl");
+      __publicField(this, "pageSize");
+      this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
+      this.pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE$1;
+    }
+    async get(path) {
+      const response = await this.fetchImpl(`${BASE_URL$1}${path}`, {
+        method: "GET",
+        credentials: "include",
+        headers: { accept: "application/json" }
+      });
+      if (!response.ok) {
+        throw new Error(`Grok GET ${path} failed: ${response.status} ${response.statusText}`);
+      }
+      return await response.json();
+    }
+    async post(path, body) {
+      const response = await this.fetchImpl(`${BASE_URL$1}${path}`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json", accept: "application/json" },
+        body: JSON.stringify(body ?? {})
+      });
+      if (!response.ok) {
+        throw new Error(`Grok POST ${path} failed: ${response.status} ${response.statusText}`);
+      }
+      return await response.json();
+    }
+    /** One page of the sidebar history. `pageToken` continues a previous page. */
+    listConversations(pageToken) {
+      const params = new URLSearchParams({ pageSize: String(this.pageSize) });
+      if (pageToken) params.set("pageToken", pageToken);
+      return this.get(`app-chat/conversations?${params.toString()}`);
+    }
+    /** The ordered message-tree skeleton (ids + sender + parent, no content). */
+    responseNodes(conversationId) {
+      return this.get(
+        `app-chat/conversations/${conversationId}/response-node`
+      );
+    }
+    /** The full content for the given response ids (order is NOT preserved). */
+    loadResponses(conversationId, responseIds) {
+      return this.post(
+        `app-chat/conversations/${conversationId}/load-responses`,
+        { responseIds }
+      );
+    }
+  }
+  const PLATFORM$1 = "grok";
+  function toRole$1(sender) {
+    return (sender ?? "").toLowerCase() === "assistant" ? "assistant" : "user";
+  }
+  function parseCitations(results) {
+    const citations = [];
+    const seen = /* @__PURE__ */ new Set();
+    for (const result of results ?? []) {
+      const key = result.url ?? result.title ?? "";
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      const citation = {};
+      if (result.title) citation.title = result.title;
+      if (result.url) citation.url = result.url;
+      if (result.preview) citation.snippet = result.preview;
+      citations.push(citation);
+    }
+    return citations;
+  }
+  function parseAttachments$1(assets) {
+    const attachments = [];
+    for (const [index, asset] of (assets ?? []).entries()) {
+      const size = typeof asset.sizeBytes === "string" ? Number(asset.sizeBytes) : asset.sizeBytes;
+      const attachment = { id: asset.assetId || asset.name || `file-${index}` };
+      if (asset.name) attachment.name = asset.name;
+      if (asset.mimeType) attachment.mimeType = asset.mimeType;
+      if (typeof size === "number" && Number.isFinite(size)) attachment.sizeBytes = size;
+      attachments.push(attachment);
+    }
+    return attachments;
+  }
+  function parseResponse(raw) {
+    var _a2;
+    const id = raw.responseId ?? "";
+    const message = {
+      id,
+      role: toRole$1(raw.sender),
+      content: raw.message ? [{ type: "text", text: raw.message }] : []
+    };
+    if (raw.createTime) message.timestamp = raw.createTime;
+    if (raw.model && message.role === "assistant") message.model = raw.model;
+    const citations = parseCitations(((_a2 = raw.citedWebSearchResults) == null ? void 0 : _a2.length) ? raw.citedWebSearchResults : raw.webSearchResults);
+    if (citations.length) message.citations = citations;
+    const attachments = parseAttachments$1(raw.fileAttachmentAssetMetadata);
+    if (attachments.length) message.attachments = attachments.map((a) => a.id);
+    if (raw.parentResponseId !== void 0) message.parentId = raw.parentResponseId || null;
+    return { message, attachments };
+  }
+  function sortChronologically$1(messages) {
+    const originalIndex = /* @__PURE__ */ new Map();
+    messages.forEach((m, i) => originalIndex.set(m, i));
+    messages.sort((a, b) => {
+      const ta = a.timestamp ?? "";
+      const tb = b.timestamp ?? "";
+      if (ta && tb && ta !== tb) return ta < tb ? -1 : 1;
+      return (originalIndex.get(a) ?? 0) - (originalIndex.get(b) ?? 0);
+    });
+  }
+  function linkChildren$1(messages) {
+    const childrenOf = /* @__PURE__ */ new Map();
+    for (const m of messages) {
+      if (m.parentId) {
+        const list = childrenOf.get(m.parentId) ?? [];
+        list.push(m.id);
+        childrenOf.set(m.parentId, list);
+      }
+    }
+    for (const m of messages) {
+      const children = childrenOf.get(m.id);
+      if (children == null ? void 0 : children.length) m.childrenIds = children;
+    }
+  }
+  function parseConversationList(response) {
+    const metas = [];
+    for (const conv of response.conversations ?? []) {
+      if (!conv.conversationId) continue;
+      const meta = {
+        id: conv.conversationId,
+        platform: PLATFORM$1,
+        title: conv.title ?? ""
+      };
+      if (conv.createTime) meta.createdAt = conv.createTime;
+      if (conv.modifyTime) meta.updatedAt = conv.modifyTime;
+      metas.push(meta);
+    }
+    return metas;
+  }
+  function nextPageToken(response) {
+    return response.nextPageToken || void 0;
+  }
+  function toConversation$1(conversationId, nodes, loaded, meta) {
+    var _a2, _b2;
+    const byId = /* @__PURE__ */ new Map();
+    for (const r of loaded.responses ?? []) {
+      if (r.responseId) byId.set(r.responseId, r);
+    }
+    const ordered = [];
+    const seen = /* @__PURE__ */ new Set();
+    for (const node of nodes.responseNodes ?? []) {
+      const id = node.responseId;
+      if (!id || seen.has(id)) continue;
+      const raw = byId.get(id) ?? { responseId: id, sender: node.sender, parentResponseId: node.parentResponseId };
+      seen.add(id);
+      ordered.push(raw);
+    }
+    for (const r of loaded.responses ?? []) {
+      if (r.responseId && !seen.has(r.responseId)) {
+        seen.add(r.responseId);
+        ordered.push(r);
+      }
+    }
+    const messages = [];
+    const attachments = [];
+    const seenAttachment = /* @__PURE__ */ new Set();
+    for (const raw of ordered) {
+      const parsed = parseResponse(raw);
+      messages.push(parsed.message);
+      for (const att of parsed.attachments) {
+        if (seenAttachment.has(att.id)) continue;
+        seenAttachment.add(att.id);
+        attachments.push(att);
+      }
+    }
+    sortChronologically$1(messages);
+    linkChildren$1(messages);
+    const model = (_a2 = [...messages].reverse().find((m) => m.model)) == null ? void 0 : _a2.model;
+    const firstUserPart = (_b2 = messages.find((m) => m.role === "user")) == null ? void 0 : _b2.content.find((c) => c.type === "text");
+    const fallbackTitle = (firstUserPart == null ? void 0 : firstUserPart.type) === "text" ? firstUserPart.text : "";
+    const conversation = {
+      schemaVersion: "1",
+      id: conversationId,
+      platform: PLATFORM$1,
+      title: (meta == null ? void 0 : meta.title) || fallbackTitle,
+      messages
+    };
+    if (meta == null ? void 0 : meta.createdAt) conversation.createdAt = meta.createdAt;
+    if (meta == null ? void 0 : meta.updatedAt) conversation.updatedAt = meta.updatedAt;
+    if (model) conversation.model = model;
+    if (attachments.length) conversation.attachments = attachments;
+    conversation.sourceUrl = `https://grok.com/c/${conversationId}`;
+    return conversation;
+  }
+  const MAX_PAGES$1 = 1e3;
+  class GrokAdapter {
+    constructor(options = {}) {
+      __publicField(this, "platform", PLATFORM$1);
+      __publicField(this, "client");
+      __publicField(this, "metaCache", /* @__PURE__ */ new Map());
+      this.client = new GrokClient(options);
+    }
+    detect() {
+      if (typeof location === "undefined") return false;
+      return /(^|\.)grok\.com$/.test(location.hostname);
+    }
+    async *listConversations() {
+      let pageToken;
+      for (let page = 0; page < MAX_PAGES$1; page++) {
+        const response = await this.client.listConversations(pageToken);
+        const metas = parseConversationList(response);
+        for (const meta of metas) {
+          this.metaCache.set(meta.id, meta);
+          yield meta;
+        }
+        pageToken = nextPageToken(response);
+        if (!pageToken || metas.length === 0) break;
+      }
+    }
+    async fetchConversation(id) {
+      const nodes = await this.client.responseNodes(id);
+      const responseIds = (nodes.responseNodes ?? []).map((n) => n.responseId).filter((rid) => Boolean(rid));
+      const loaded = responseIds.length ? await this.client.loadResponses(id, responseIds) : { responses: [] };
+      const meta = this.metaCache.get(id);
+      return toConversation$1(id, nodes, loaded, {
+        title: meta == null ? void 0 : meta.title,
+        createdAt: meta == null ? void 0 : meta.createdAt,
+        updatedAt: meta == null ? void 0 : meta.updatedAt
+      });
     }
   }
   const BASE_URL = "https://www.kimi.com/apiv2/";
@@ -1342,7 +2114,13 @@
     }
   }
   function resolveAdapter() {
-    const adapters = [new KimiAdapter(), new GeminiAdapter()];
+    const adapters = [
+      new KimiAdapter(),
+      new GeminiAdapter(),
+      new GrokAdapter(),
+      new DeepSeekAdapter(),
+      new ChatGPTAdapter()
+    ];
     return adapters.find((adapter) => adapter.detect()) ?? null;
   }
   async function runExport(adapter, setStatus, range) {

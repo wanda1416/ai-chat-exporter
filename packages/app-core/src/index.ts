@@ -1,3 +1,4 @@
+import { ChatGPTAdapter } from "@ace/adapter-chatgpt";
 import { DeepSeekAdapter } from "@ace/adapter-deepseek";
 import { GeminiAdapter } from "@ace/adapter-gemini";
 import { GrokAdapter } from "@ace/adapter-grok";
@@ -47,6 +48,7 @@ function resolveAdapter(): PlatformAdapter | null {
     new GeminiAdapter(),
     new GrokAdapter(),
     new DeepSeekAdapter(),
+    new ChatGPTAdapter(),
   ];
   return adapters.find((adapter) => adapter.detect()) ?? null;
 }

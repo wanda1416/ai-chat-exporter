@@ -41,6 +41,15 @@ importers:
         specifier: ^4.0.6
         version: 4.0.6(vite@5.4.21(@types/node@22.20.1))
 
+  packages/adapter-chatgpt:
+    dependencies:
+      '@ace/core':
+        specifier: workspace:*
+        version: link:../core
+      '@ace/schema':
+        specifier: workspace:*
+        version: link:../schema
+
   packages/adapter-deepseek:
     dependencies:
       '@ace/core':
@@ -79,6 +88,9 @@ importers:
 
   packages/app-core:
     dependencies:
+      '@ace/adapter-chatgpt':
+        specifier: workspace:*
+        version: link:../adapter-chatgpt
       '@ace/adapter-deepseek':
         specifier: workspace:*
         version: link:../adapter-deepseek

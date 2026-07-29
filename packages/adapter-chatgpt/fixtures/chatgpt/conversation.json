@@ -1,0 +1,167 @@
+{
+  "title": "Song-era forms of address",
+  "create_time": 1783797654.123456,
+  "update_time": 1783880000.5,
+  "current_node": "n-toolimg",
+  "default_model_slug": "gpt-4o",
+  "mapping": {
+    "n-root": {
+      "id": "n-root",
+      "message": {
+        "id": "n-root",
+        "author": { "role": "system", "metadata": {} },
+        "create_time": null,
+        "content": { "content_type": "text", "parts": [""] },
+        "recipient": "all",
+        "metadata": { "is_visually_hidden_from_conversation": true }
+      },
+      "parent": null,
+      "children": ["n-u1"]
+    },
+    "n-u1": {
+      "id": "n-u1",
+      "message": {
+        "id": "n-u1",
+        "author": { "role": "user", "metadata": {} },
+        "create_time": 1783797654.5,
+        "content": {
+          "content_type": "text",
+          "parts": ["Summarize how Song-dynasty people addressed relatives. See the attached notes."]
+        },
+        "recipient": "all",
+        "metadata": {
+          "attachments": [
+            { "id": "file-UP1", "name": "song-titles.txt", "size": 2048, "mime_type": "text/plain" }
+          ]
+        }
+      },
+      "parent": "n-root",
+      "children": ["n-a1"]
+    },
+    "n-a1": {
+      "id": "n-a1",
+      "message": {
+        "id": "n-a1",
+        "author": { "role": "assistant", "metadata": {} },
+        "create_time": 1783797700.0,
+        "content": {
+          "content_type": "text",
+          "parts": ["In the Song dynasty, kinship terms were highly stratified by seniority and lineage."]
+        },
+        "status": "finished_successfully",
+        "end_turn": true,
+        "recipient": "all",
+        "metadata": {
+          "model_slug": "gpt-4o",
+          "citations": [],
+          "content_references": [
+            {
+              "type": "grouped_webpages",
+              "items": [
+                { "title": "Song Honorifics", "url": "https://example.com/song", "attribution": "example.com", "pub_date": null },
+                { "title": "Song Honorifics (mirror)", "url": "https://example.com/song", "attribution": "example.com" },
+                { "title": "Kinship Terms", "url": "https://example.org/kinship", "attribution": "example.org" }
+              ]
+            }
+          ]
+        }
+      },
+      "parent": "n-u1",
+      "children": ["n-tool"]
+    },
+    "n-tool": {
+      "id": "n-tool",
+      "message": {
+        "id": "n-tool",
+        "author": { "role": "assistant", "metadata": {} },
+        "create_time": 1783797705.0,
+        "content": { "content_type": "code", "parts": ["search(\"song honorifics illustration\")"] },
+        "recipient": "web",
+        "metadata": {}
+      },
+      "parent": "n-a1",
+      "children": ["n-u2"]
+    },
+    "n-u2": {
+      "id": "n-u2",
+      "message": {
+        "id": "n-u2",
+        "author": { "role": "user", "metadata": {} },
+        "create_time": 1783797800.0,
+        "content": { "content_type": "text", "parts": ["Now draw an illustration of a Song family greeting."] },
+        "recipient": "all",
+        "metadata": {}
+      },
+      "parent": "n-tool",
+      "children": ["n-a2", "n-toolprompt"]
+    },
+    "n-a2": {
+      "id": "n-a2",
+      "message": {
+        "id": "n-a2",
+        "author": { "role": "assistant", "metadata": {} },
+        "create_time": 1783797850.0,
+        "content": { "content_type": "text", "parts": ["(first attempt, later regenerated)"] },
+        "status": "finished_successfully",
+        "end_turn": true,
+        "recipient": "all",
+        "metadata": { "model_slug": "gpt-4o" }
+      },
+      "parent": "n-u2",
+      "children": []
+    },
+    "n-toolprompt": {
+      "id": "n-toolprompt",
+      "message": {
+        "id": "n-toolprompt",
+        "author": { "role": "assistant", "metadata": {} },
+        "create_time": 1783797855.0,
+        "content": { "content_type": "code", "parts": ["{\"prompt\":\"a Song family greeting\"}"] },
+        "recipient": "t2uay3k.sj1i4kz",
+        "metadata": {}
+      },
+      "parent": "n-u2",
+      "children": ["n-toolstatus"]
+    },
+    "n-toolstatus": {
+      "id": "n-toolstatus",
+      "message": {
+        "id": "n-toolstatus",
+        "author": { "role": "tool", "name": "t2uay3k.sj1i4kz", "metadata": {} },
+        "create_time": 1783797858.0,
+        "content": { "content_type": "text", "parts": ["GPT-4o returned 1 image."] },
+        "recipient": "all",
+        "metadata": { "is_visually_hidden_from_conversation": true }
+      },
+      "parent": "n-toolprompt",
+      "children": ["n-toolimg"]
+    },
+    "n-toolimg": {
+      "id": "n-toolimg",
+      "message": {
+        "id": "n-toolimg",
+        "author": { "role": "tool", "name": "t2uay3k.sj1i4kz", "metadata": {} },
+        "create_time": 1783797860.0,
+        "content": {
+          "content_type": "multimodal_text",
+          "parts": [
+            "Here is the illustration:",
+            {
+              "content_type": "image_asset_pointer",
+              "asset_pointer": "sediment://file_IMG1",
+              "size_bytes": 512000,
+              "width": 1024,
+              "height": 1024
+            }
+          ]
+        },
+        "status": "finished_successfully",
+        "end_turn": true,
+        "recipient": "all",
+        "metadata": {}
+      },
+      "parent": "n-toolstatus",
+      "children": []
+    }
+  }
+}

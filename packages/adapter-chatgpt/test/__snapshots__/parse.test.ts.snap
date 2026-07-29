@@ -1,0 +1,103 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`chatgpt adapter parsing (golden fixtures) > assembles a Conversation from the detail mapping 1`] = `
+{
+  "attachments": [
+    {
+      "id": "file-UP1",
+      "mimeType": "text/plain",
+      "name": "song-titles.txt",
+      "sizeBytes": 2048,
+    },
+    {
+      "id": "sediment://file_IMG1",
+      "sizeBytes": 512000,
+    },
+  ],
+  "createdAt": "2026-07-11T19:20:54.123Z",
+  "id": "11111111-1111-4111-8111-111111111111",
+  "messages": [
+    {
+      "attachments": [
+        "file-UP1",
+      ],
+      "childrenIds": [
+        "n-a1",
+      ],
+      "content": [
+        {
+          "text": "Summarize how Song-dynasty people addressed relatives. See the attached notes.",
+          "type": "text",
+        },
+      ],
+      "id": "n-u1",
+      "parentId": null,
+      "role": "user",
+      "timestamp": "2026-07-11T19:20:54.500Z",
+    },
+    {
+      "childrenIds": [
+        "n-u2",
+      ],
+      "citations": [
+        {
+          "title": "Song Honorifics",
+          "url": "https://example.com/song",
+        },
+        {
+          "title": "Kinship Terms",
+          "url": "https://example.org/kinship",
+        },
+      ],
+      "content": [
+        {
+          "text": "In the Song dynasty, kinship terms were highly stratified by seniority and lineage.",
+          "type": "text",
+        },
+      ],
+      "id": "n-a1",
+      "model": "gpt-4o",
+      "parentId": "n-u1",
+      "role": "assistant",
+      "timestamp": "2026-07-11T19:21:40.000Z",
+    },
+    {
+      "childrenIds": [
+        "n-toolimg",
+      ],
+      "content": [
+        {
+          "text": "Now draw an illustration of a Song family greeting.",
+          "type": "text",
+        },
+      ],
+      "id": "n-u2",
+      "parentId": "n-a1",
+      "role": "user",
+      "timestamp": "2026-07-11T19:23:20.000Z",
+    },
+    {
+      "content": [
+        {
+          "text": "Here is the illustration:",
+          "type": "text",
+        },
+        {
+          "attachmentId": "sediment://file_IMG1",
+          "type": "image",
+        },
+      ],
+      "id": "n-toolimg",
+      "parentId": "n-u2",
+      "role": "assistant",
+      "timestamp": "2026-07-11T19:24:20.000Z",
+    },
+  ],
+  "model": "gpt-4o",
+  "platform": "chatgpt",
+  "schemaVersion": "1",
+  "sourceUrl": "https://chatgpt.com/c/11111111-1111-4111-8111-111111111111",
+  "title": "Song-era forms of address",
+  "updatedAt": "2026-07-12T18:13:20.500Z",
+}
+`;
