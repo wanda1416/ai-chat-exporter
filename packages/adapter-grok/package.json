@@ -1,6 +1,6 @@
 {
   "name": "@ace/adapter-grok",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Grok (grok.com) platform adapter.",
   "type": "module",
   "exports": {

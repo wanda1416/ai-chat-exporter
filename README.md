@@ -159,7 +159,7 @@ Implement `PlatformAdapter` in a new `packages/adapter-<name>/`, mapping the pla
 | Version | Scope |
 |---|---|
 | **v0.1** | Schema v1 + Kimi, Gemini, Grok, DeepSeek & ChatGPT adapters + MD/JSON/ZIP exporters + userscript (range dialog) + Chrome extension |
-| **v0.1.1** | Optional attachment download (images & uploaded files), streaming ZIP (`ZipSink`), ChatGPT attachment resolution via `/backend-api/files/{id}/download` |
+| **v0.1.2** | Optional attachment download (images & uploaded files), streaming ZIP (`ZipSink`), ChatGPT attachment resolution via `/backend-api/files/{id}/download` |
 | v0.2 | CLI form (incremental backup) + another high-demand platform |
 | v0.3 | Adapter guide + fixture anonymizer + CONTRIBUTING — open community adapters |
 | v0.4+ | Obsidian exporter, more platforms, Chrome Web Store listing |

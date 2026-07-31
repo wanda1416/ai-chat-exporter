@@ -1,8 +1,8 @@
 # Store Listing / 发布文案
 
-Ready-to-paste copy for publishing **AI Chat Exporter v0.1.1** on Greasy Fork (userscript) and the Chrome Web Store (extension). English first, then 简体中文.
+Ready-to-paste copy for publishing **AI Chat Exporter v0.1.2** on Greasy Fork (userscript) and the Chrome Web Store (extension). English first, then 简体中文.
 
-本文档为 **AI Chat Exporter v0.1.1** 在油猴脚本站（Greasy Fork 等）与 Chrome 应用商店发布时的说明文案，可直接复制粘贴。先英文，后中文。
+本文档为 **AI Chat Exporter v0.1.2** 在油猴脚本站（Greasy Fork 等）与 Chrome 应用商店发布时的说明文案，可直接复制粘贴。先英文，后中文。
 
 ---
 
@@ -12,7 +12,7 @@ Ready-to-paste copy for publishing **AI Chat Exporter v0.1.1** on Greasy Fork (u
 |---|---|
 | Name (EN) | AI Chat Exporter (Kimi, Gemini, Grok, DeepSeek & ChatGPT) |
 | 名称（中） | AI 对话导出（Kimi、Gemini、Grok、DeepSeek & ChatGPT） |
-| Version / 版本 | 0.1.1 |
+| Version / 版本 | 0.1.2 |
 | License / 许可 | MIT |
 | Homepage / 主页 | https://github.com/wanda1416/ai-chat-exporter |
 | Support / 反馈 | https://github.com/wanda1416/ai-chat-exporter/issues |
@@ -174,7 +174,7 @@ The extension requests **zero permissions** — no `storage`, no `downloads`, no
 
 ## 7. Release notes / 版本说明
 
-### v0.1.1
+### v0.1.2
 
 **EN**
 

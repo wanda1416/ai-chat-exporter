@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name               AI Chat Exporter (Kimi, Gemini, Grok, DeepSeek & ChatGPT)
-// @name:zh-CN         AI 对话导出（Kimi、Gemini、Grok、DeepSeek & ChatGPT）
+// @name               AI Chat 全部对话导出 / Export All Chats (Kimi, Gemini, Grok, DeepSeek & ChatGPT)
+// @name:zh-CN         AI Chat 全部对话导出（Kimi、Gemini、Grok、DeepSeek & ChatGPT）
 // @namespace          https://github.com/wanda1416/ai-chat-exporter
-// @version            0.1.1
+// @version            0.1.2
 // @author             wanda1416
 // @description        Batch-export your Kimi, Gemini, Grok, DeepSeek & ChatGPT conversations to Markdown + JSON, zipped. Pick a range, one click — runs entirely in your browser, no data sent anywhere.
 // @description:zh-CN  一键批量导出 Kimi / Gemini / Grok / DeepSeek / ChatGPT 全部对话为 Markdown + JSON 并打包 zip。支持导出区间选择，纯本地运行，数据不离开浏览器。

@@ -34,8 +34,8 @@ export default defineConfig({
       entry: "src/main.ts",
       userscript: {
         name: {
-          "": "AI Chat Exporter (Kimi, Gemini, Grok, DeepSeek & ChatGPT)",
-          "zh-CN": "AI 对话导出（Kimi、Gemini、Grok、DeepSeek & ChatGPT）",
+          "": "AI Chat 全部对话导出 / Export All Chats (Kimi, Gemini, Grok, DeepSeek & ChatGPT)",
+          "zh-CN": "AI Chat 全部对话导出（Kimi、Gemini、Grok、DeepSeek & ChatGPT）",
         },
         namespace: "https://github.com/wanda1416/ai-chat-exporter",
         author: "wanda1416",

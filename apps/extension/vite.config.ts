@@ -19,7 +19,7 @@ function emitManifest(): Plugin {
     writeBundle(options) {
       const manifest = {
         manifest_version: 3,
-        name: "AI Chat Exporter (Kimi, Gemini, Grok, DeepSeek & ChatGPT)",
+        name: "AI Chat 全部对话导出 / Export All Chats (Kimi, Gemini, Grok, DeepSeek & ChatGPT)",
         version: pkg.version,
         description:
           "Batch-export your Kimi, Gemini, Grok, DeepSeek & ChatGPT conversations to Markdown + JSON, zipped. Runs entirely in your browser.",
