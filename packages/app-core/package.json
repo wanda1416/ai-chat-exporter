@@ -1,6 +1,6 @@
 {
   "name": "@ace/app-core",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Shared in-page bootstrap (button, range dialog, export flow) consumed by the userscript and the Chrome extension shells.",
   "type": "module",
   "exports": {
