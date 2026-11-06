@@ -1,6 +1,6 @@
 {
   "name": "@ace/userscript",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "description": "Tampermonkey userscript — the v0.1 shipping form for Kimi/Gemini export.",
   "type": "module",

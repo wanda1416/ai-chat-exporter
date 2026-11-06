@@ -2,7 +2,7 @@
 // @name               AI Chat 全部对话导出 / Export All Chats (Kimi, Gemini, Grok, DeepSeek, ChatGPT, Yuanbao & Hunyuan)
 // @name:zh-CN         AI Chat 全部对话导出（Kimi、Gemini、Grok、DeepSeek、ChatGPT、腾讯元宝 & 混元）
 // @namespace          https://github.com/wanda1416/ai-chat-exporter
-// @version            0.1.4
+// @version            0.1.5
 // @author             wanda1416
 // @description        Batch-export your Kimi, Gemini, Grok, DeepSeek, ChatGPT, Yuanbao & Hunyuan conversations to Markdown + JSON, zipped. Pick a range, one click — runs entirely in your browser, no data sent anywhere.
 // @description:zh-CN  一键批量导出 Kimi / Gemini / Grok / DeepSeek / ChatGPT / 腾讯元宝 / 腾讯混元 全部对话为 Markdown + JSON 并打包 zip。支持导出区间选择，纯本地运行，数据不离开浏览器。
@@ -3225,6 +3225,7 @@ ${incoming.content}`,
     filesSaved: (count) => `+${count} files`,
     filesSkipped: (count) => `${count} files skipped`,
     failed: (count) => `${count} failed`,
+    summarySuffix: ".",
     progressListing: (count) => `Listing conversations… (${count})`,
     progressFetching: (done, total, title) => `Fetching ${done}/${total}: ${title}`,
     progressAttachments: (done, total) => `Downloading files ${done}/${total}…`,
@@ -3254,6 +3255,7 @@ ${incoming.content}`,
     filesSaved: (count) => `+${count} 个文件`,
     filesSkipped: (count) => `${count} 个文件已跳过`,
     failed: (count) => `${count} 个失败`,
+    summarySuffix: "。",
     progressListing: (count) => `正在列出对话…（${count}）`,
     progressFetching: (done, total, title) => `正在拉取 ${done}/${total}：${title}`,
     progressAttachments: (done, total) => `正在下载文件 ${done}/${total}…`,
@@ -3343,7 +3345,7 @@ ${incoming.content}`,
     if (attachmentsSaved) bits.push(t.filesSaved(attachmentsSaved));
     if (attachmentsSkipped) bits.push(t.filesSkipped(attachmentsSkipped));
     if (failed.length) bits.push(t.failed(failed.length));
-    setStatus(`${bits[0]}${bits.length > 1 ? ` (${bits.slice(1).join(", ")})` : ""}.`);
+    setStatus(`${bits[0]}${bits.length > 1 ? ` (${bits.slice(1).join(", ")})` : ""}${t.summarySuffix}`);
   }
   const countCache = /* @__PURE__ */ new Map();
   async function countConversations(adapter, onTick) {
@@ -3359,6 +3361,12 @@ ${incoming.content}`,
     }
     countCache.set(adapter.platform, n);
     return n;
+  }
+  function h(tag, style = {}, text) {
+    const node = document.createElement(tag);
+    Object.assign(node.style, style);
+    if (text !== void 0) node.textContent = text;
+    return node;
   }
   function askChoices(adapter) {
     return new Promise((resolve) => {
@@ -3387,37 +3395,95 @@ ${incoming.content}`,
         fontFamily: "system-ui, sans-serif",
         boxShadow: "0 8px 30px rgba(0,0,0,.35)"
       });
-      panel.innerHTML = `
-      <div style="font-size:15px;font-weight:600;margin-bottom:8px">${t.dialogTitle}</div>
-      <div style="color:#666;margin-bottom:12px">${t.dialogHint}</div>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
-        <input data-role="from" type="number" min="1" step="1" value="1"
-               style="width:0;flex:1;padding:6px 8px;border:1px solid #ccc;border-radius:6px;background:#fff;color:#111">
-        <span>–</span>
-        <input data-role="to" type="number" min="1" step="1" placeholder="${t.rangeToPlaceholder}"
-               style="width:0;flex:1;padding:6px 8px;border:1px solid #ccc;border-radius:6px;background:#fff;color:#111">
-      </div>
-      <div data-role="error" style="color:#c00;margin-bottom:8px;display:none"></div>
-      <label style="display:flex;gap:8px;align-items:center;margin-bottom:12px;cursor:pointer">
-        <input data-role="attachments" type="checkbox" style="margin:0">
-        <span>${t.attachmentsLabel}</span>
-      </label>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
-        <span data-role="total" style="color:#666">${t.totalUnknown}</span>
-        <button data-role="count" style="padding:3px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#333;cursor:pointer;font-size:12px">${t.loadCount}</button>
-      </div>
-      <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button data-role="cancel" style="padding:7px 14px;border-radius:8px;border:1px solid #ccc;background:#fff;color:#111;cursor:pointer">${t.cancel}</button>
-        <button data-role="ok" style="padding:7px 14px;border-radius:8px;border:none;background:#111;color:#fff;cursor:pointer">${t.export}</button>
-      </div>`;
+      const title = h("div", { fontSize: "15px", fontWeight: "600", marginBottom: "8px" }, t.dialogTitle);
+      const hint = h("div", { color: "#666", marginBottom: "12px" }, t.dialogHint);
+      const inputStyle = {
+        width: "0",
+        flex: "1",
+        padding: "6px 8px",
+        border: "1px solid #ccc",
+        borderRadius: "6px",
+        background: "#fff",
+        color: "#111"
+      };
+      const rangeRow = h("div", {
+        display: "flex",
+        gap: "8px",
+        alignItems: "center",
+        marginBottom: "16px"
+      });
+      const fromInput = h("input", inputStyle);
+      fromInput.type = "number";
+      fromInput.min = "1";
+      fromInput.step = "1";
+      fromInput.value = "1";
+      const toInput = h("input", inputStyle);
+      toInput.type = "number";
+      toInput.min = "1";
+      toInput.step = "1";
+      toInput.placeholder = t.rangeToPlaceholder;
+      rangeRow.append(fromInput, h("span", {}, "–"), toInput);
+      const errorBox = h("div", { color: "#c00", marginBottom: "8px", display: "none" });
+      const attachmentsInput = h("input", { margin: "0" });
+      attachmentsInput.type = "checkbox";
+      const attachmentsLabel = h("label", {
+        display: "flex",
+        gap: "8px",
+        alignItems: "center",
+        marginBottom: "12px",
+        cursor: "pointer"
+      });
+      attachmentsLabel.append(attachmentsInput, h("span", {}, t.attachmentsLabel));
+      const totalLabel = h("span", { color: "#666" }, t.totalUnknown);
+      const countButton = h(
+        "button",
+        {
+          padding: "3px 10px",
+          borderRadius: "6px",
+          border: "1px solid #ccc",
+          background: "#fff",
+          color: "#333",
+          cursor: "pointer",
+          fontSize: "12px"
+        },
+        t.loadCount
+      );
+      const totalRow = h("div", {
+        display: "flex",
+        gap: "8px",
+        alignItems: "center",
+        marginBottom: "16px"
+      });
+      totalRow.append(totalLabel, countButton);
+      const cancelButton = h(
+        "button",
+        {
+          padding: "7px 14px",
+          borderRadius: "8px",
+          border: "1px solid #ccc",
+          background: "#fff",
+          color: "#111",
+          cursor: "pointer"
+        },
+        t.cancel
+      );
+      const submitButton = h(
+        "button",
+        {
+          padding: "7px 14px",
+          borderRadius: "8px",
+          border: "none",
+          background: "#111",
+          color: "#fff",
+          cursor: "pointer"
+        },
+        t.export
+      );
+      const buttonRow = h("div", { display: "flex", gap: "8px", justifyContent: "flex-end" });
+      buttonRow.append(cancelButton, submitButton);
+      panel.append(title, hint, rangeRow, errorBox, attachmentsLabel, totalRow, buttonRow);
       panel.lang = detectLocale();
       overlay.appendChild(panel);
-      const fromInput = panel.querySelector('[data-role="from"]');
-      const toInput = panel.querySelector('[data-role="to"]');
-      const attachmentsInput = panel.querySelector('[data-role="attachments"]');
-      const errorBox = panel.querySelector('[data-role="error"]');
-      const totalLabel = panel.querySelector('[data-role="total"]');
-      const countButton = panel.querySelector('[data-role="count"]');
       countButton.addEventListener("click", async () => {
         countButton.disabled = true;
         countButton.textContent = t.counting;
@@ -3449,8 +3515,8 @@ ${incoming.content}`,
         }
         close({ range: { from, to }, includeAttachments: attachmentsInput.checked });
       };
-      panel.querySelector('[data-role="ok"]').addEventListener("click", submit);
-      panel.querySelector('[data-role="cancel"]').addEventListener("click", () => close(null));
+      submitButton.addEventListener("click", submit);
+      cancelButton.addEventListener("click", () => close(null));
       overlay.addEventListener("click", (event) => {
         if (event.target === overlay) close(null);
       });

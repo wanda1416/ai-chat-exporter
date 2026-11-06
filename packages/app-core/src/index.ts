@@ -90,7 +90,7 @@ async function runExport(
   if (attachmentsSaved) bits.push(t.filesSaved(attachmentsSaved));
   if (attachmentsSkipped) bits.push(t.filesSkipped(attachmentsSkipped));
   if (failed.length) bits.push(t.failed(failed.length));
-  setStatus(`${bits[0]}${bits.length > 1 ? ` (${bits.slice(1).join(", ")})` : ""}.`);
+  setStatus(`${bits[0]}${bits.length > 1 ? ` (${bits.slice(1).join(", ")})` : ""}${t.summarySuffix}`);
 }
 
 /**
@@ -125,6 +125,24 @@ interface ExportChoices {
 }
 
 /**
+ * Creates an element with inline styles and optional text.
+ *
+ * Deliberately never uses `innerHTML`: some host pages (Gemini) ship a
+ * `require-trusted-types-for 'script'` CSP, and any string HTML assignment
+ * there throws `TypeError: This document requires 'TrustedHTML' assignment`.
+ */
+function h<K extends keyof HTMLElementTagNameMap>(
+  tag: K,
+  style: Partial<CSSStyleDeclaration> = {},
+  text?: string,
+): HTMLElementTagNameMap[K] {
+  const node = document.createElement(tag);
+  Object.assign(node.style, style);
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+/**
  * Modal asking for the 1-based, inclusive conversation range and whether to
  * download attachments. Resolves with the choices, or null on cancel.
  */
@@ -156,38 +174,103 @@ function askChoices(adapter: PlatformAdapter): Promise<ExportChoices | null> {
       fontFamily: "system-ui, sans-serif",
       boxShadow: "0 8px 30px rgba(0,0,0,.35)",
     } satisfies Partial<CSSStyleDeclaration>);
-    panel.innerHTML = `
-      <div style="font-size:15px;font-weight:600;margin-bottom:8px">${t.dialogTitle}</div>
-      <div style="color:#666;margin-bottom:12px">${t.dialogHint}</div>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
-        <input data-role="from" type="number" min="1" step="1" value="1"
-               style="width:0;flex:1;padding:6px 8px;border:1px solid #ccc;border-radius:6px;background:#fff;color:#111">
-        <span>–</span>
-        <input data-role="to" type="number" min="1" step="1" placeholder="${t.rangeToPlaceholder}"
-               style="width:0;flex:1;padding:6px 8px;border:1px solid #ccc;border-radius:6px;background:#fff;color:#111">
-      </div>
-      <div data-role="error" style="color:#c00;margin-bottom:8px;display:none"></div>
-      <label style="display:flex;gap:8px;align-items:center;margin-bottom:12px;cursor:pointer">
-        <input data-role="attachments" type="checkbox" style="margin:0">
-        <span>${t.attachmentsLabel}</span>
-      </label>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
-        <span data-role="total" style="color:#666">${t.totalUnknown}</span>
-        <button data-role="count" style="padding:3px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#333;cursor:pointer;font-size:12px">${t.loadCount}</button>
-      </div>
-      <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button data-role="cancel" style="padding:7px 14px;border-radius:8px;border:1px solid #ccc;background:#fff;color:#111;cursor:pointer">${t.cancel}</button>
-        <button data-role="ok" style="padding:7px 14px;border-radius:8px;border:none;background:#111;color:#fff;cursor:pointer">${t.export}</button>
-      </div>`;
+    // Built with DOM nodes, never `innerHTML`: Gemini enforces Trusted Types,
+    // where a string HTML assignment throws instead of rendering.
+    const title = h("div", { fontSize: "15px", fontWeight: "600", marginBottom: "8px" }, t.dialogTitle);
+    const hint = h("div", { color: "#666", marginBottom: "12px" }, t.dialogHint);
+
+    const inputStyle: Partial<CSSStyleDeclaration> = {
+      width: "0",
+      flex: "1",
+      padding: "6px 8px",
+      border: "1px solid #ccc",
+      borderRadius: "6px",
+      background: "#fff",
+      color: "#111",
+    };
+    const rangeRow = h("div", {
+      display: "flex",
+      gap: "8px",
+      alignItems: "center",
+      marginBottom: "16px",
+    });
+    const fromInput = h("input", inputStyle);
+    fromInput.type = "number";
+    fromInput.min = "1";
+    fromInput.step = "1";
+    fromInput.value = "1";
+    const toInput = h("input", inputStyle);
+    toInput.type = "number";
+    toInput.min = "1";
+    toInput.step = "1";
+    toInput.placeholder = t.rangeToPlaceholder;
+    rangeRow.append(fromInput, h("span", {}, "–"), toInput);
+
+    const errorBox = h("div", { color: "#c00", marginBottom: "8px", display: "none" });
+
+    const attachmentsInput = h("input", { margin: "0" });
+    attachmentsInput.type = "checkbox";
+    const attachmentsLabel = h("label", {
+      display: "flex",
+      gap: "8px",
+      alignItems: "center",
+      marginBottom: "12px",
+      cursor: "pointer",
+    });
+    attachmentsLabel.append(attachmentsInput, h("span", {}, t.attachmentsLabel));
+
+    const totalLabel = h("span", { color: "#666" }, t.totalUnknown);
+    const countButton = h(
+      "button",
+      {
+        padding: "3px 10px",
+        borderRadius: "6px",
+        border: "1px solid #ccc",
+        background: "#fff",
+        color: "#333",
+        cursor: "pointer",
+        fontSize: "12px",
+      },
+      t.loadCount,
+    );
+    const totalRow = h("div", {
+      display: "flex",
+      gap: "8px",
+      alignItems: "center",
+      marginBottom: "16px",
+    });
+    totalRow.append(totalLabel, countButton);
+
+    const cancelButton = h(
+      "button",
+      {
+        padding: "7px 14px",
+        borderRadius: "8px",
+        border: "1px solid #ccc",
+        background: "#fff",
+        color: "#111",
+        cursor: "pointer",
+      },
+      t.cancel,
+    );
+    const submitButton = h(
+      "button",
+      {
+        padding: "7px 14px",
+        borderRadius: "8px",
+        border: "none",
+        background: "#111",
+        color: "#fff",
+        cursor: "pointer",
+      },
+      t.export,
+    );
+    const buttonRow = h("div", { display: "flex", gap: "8px", justifyContent: "flex-end" });
+    buttonRow.append(cancelButton, submitButton);
+
+    panel.append(title, hint, rangeRow, errorBox, attachmentsLabel, totalRow, buttonRow);
     panel.lang = detectLocale();
     overlay.appendChild(panel);
-
-    const fromInput = panel.querySelector<HTMLInputElement>('[data-role="from"]')!;
-    const toInput = panel.querySelector<HTMLInputElement>('[data-role="to"]')!;
-    const attachmentsInput = panel.querySelector<HTMLInputElement>('[data-role="attachments"]')!;
-    const errorBox = panel.querySelector<HTMLElement>('[data-role="error"]')!;
-    const totalLabel = panel.querySelector<HTMLElement>('[data-role="total"]')!;
-    const countButton = panel.querySelector<HTMLButtonElement>('[data-role="count"]')!;
 
     countButton.addEventListener("click", async () => {
       countButton.disabled = true;
@@ -223,8 +306,8 @@ function askChoices(adapter: PlatformAdapter): Promise<ExportChoices | null> {
       close({ range: { from, to }, includeAttachments: attachmentsInput.checked });
     };
 
-    panel.querySelector('[data-role="ok"]')!.addEventListener("click", submit);
-    panel.querySelector('[data-role="cancel"]')!.addEventListener("click", () => close(null));
+    submitButton.addEventListener("click", submit);
+    cancelButton.addEventListener("click", () => close(null));
     overlay.addEventListener("click", (event) => {
       if (event.target === overlay) close(null);
     });

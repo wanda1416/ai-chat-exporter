@@ -32,6 +32,8 @@ export interface Messages {
   filesSaved: (count: number) => string;
   filesSkipped: (count: number) => string;
   failed: (count: number) => string;
+  /** Appended after the result summary; "。" for Chinese, "." for English. */
+  summarySuffix: string;
   progressListing: (count: number) => string;
   progressFetching: (done: number, total: number, title: string) => string;
   progressAttachments: (done: number, total: number) => string;
@@ -62,6 +64,7 @@ const en: Messages = {
   filesSaved: (count) => `+${count} files`,
   filesSkipped: (count) => `${count} files skipped`,
   failed: (count) => `${count} failed`,
+  summarySuffix: ".",
   progressListing: (count) => `Listing conversations… (${count})`,
   progressFetching: (done, total, title) => `Fetching ${done}/${total}: ${title}`,
   progressAttachments: (done, total) => `Downloading files ${done}/${total}…`,
@@ -92,6 +95,7 @@ const zhCN: Messages = {
   filesSaved: (count) => `+${count} 个文件`,
   filesSkipped: (count) => `${count} 个文件已跳过`,
   failed: (count) => `${count} 个失败`,
+  summarySuffix: "。",
   progressListing: (count) => `正在列出对话…（${count}）`,
   progressFetching: (done, total, title) => `正在拉取 ${done}/${total}：${title}`,
   progressAttachments: (done, total) => `正在下载文件 ${done}/${total}…`,
