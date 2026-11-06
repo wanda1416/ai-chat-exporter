@@ -14,6 +14,10 @@ import {
 import { jsonExporter } from "@ace/exporter-json";
 import { markdownExporter } from "@ace/exporter-markdown";
 import { ZipSink } from "@ace/exporter-zip";
+import { detectLocale, messages } from "./i18n.js";
+
+/** UI strings for the browser/OS language, resolved once per page load. */
+const t = messages(detectLocale());
 
 /** Triggers a browser download for the given blob. */
 function download(blob: Blob, filename: string): void {
@@ -28,15 +32,15 @@ function download(blob: Blob, filename: string): void {
 function describeProgress(p: ExportProgress): string {
   switch (p.phase) {
     case "list":
-      return `Listing conversations… (${p.total})`;
+      return t.progressListing(p.total);
     case "fetch":
-      return `Fetching ${p.completed + 1}/${p.total}: ${p.meta?.title ?? ""}`;
+      return t.progressFetching(p.completed + 1, p.total, p.meta?.title ?? "");
     case "attachments":
-      return `Downloading files ${p.completed + 1}/${p.total}…`;
+      return t.progressAttachments(p.completed + 1, p.total);
     case "export":
-      return `Exporting ${p.completed}/${p.total}…`;
+      return t.progressExporting(p.completed, p.total);
     case "done":
-      return `Done — ${p.completed} conversations.`;
+      return t.progressDone(p.completed);
   }
 }
 
@@ -76,16 +80,16 @@ async function runExport(
     });
 
   if (!conversations.length) {
-    setStatus("No conversations exported.");
+    setStatus(t.noConversations);
     return;
   }
 
   const zip = await sink.finish();
   download(zip, `${adapter.platform}-export-${new Date().toISOString().slice(0, 10)}.zip`);
-  const bits = [`Saved ${conversations.length} conversations`];
-  if (attachmentsSaved) bits.push(`+${attachmentsSaved} files`);
-  if (attachmentsSkipped) bits.push(`${attachmentsSkipped} files skipped`);
-  if (failed.length) bits.push(`${failed.length} failed`);
+  const bits = [t.saved(conversations.length)];
+  if (attachmentsSaved) bits.push(t.filesSaved(attachmentsSaved));
+  if (attachmentsSkipped) bits.push(t.filesSkipped(attachmentsSkipped));
+  if (failed.length) bits.push(t.failed(failed.length));
   setStatus(`${bits[0]}${bits.length > 1 ? ` (${bits.slice(1).join(", ")})` : ""}.`);
 }
 
@@ -153,28 +157,29 @@ function askChoices(adapter: PlatformAdapter): Promise<ExportChoices | null> {
       boxShadow: "0 8px 30px rgba(0,0,0,.35)",
     } satisfies Partial<CSSStyleDeclaration>);
     panel.innerHTML = `
-      <div style="font-size:15px;font-weight:600;margin-bottom:8px">Export conversations</div>
-      <div style="color:#666;margin-bottom:12px">Range is 1-based and inclusive. Leave “to” empty to export to the end.</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:8px">${t.dialogTitle}</div>
+      <div style="color:#666;margin-bottom:12px">${t.dialogHint}</div>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
         <input data-role="from" type="number" min="1" step="1" value="1"
                style="width:0;flex:1;padding:6px 8px;border:1px solid #ccc;border-radius:6px;background:#fff;color:#111">
         <span>–</span>
-        <input data-role="to" type="number" min="1" step="1" placeholder="end"
+        <input data-role="to" type="number" min="1" step="1" placeholder="${t.rangeToPlaceholder}"
                style="width:0;flex:1;padding:6px 8px;border:1px solid #ccc;border-radius:6px;background:#fff;color:#111">
       </div>
       <div data-role="error" style="color:#c00;margin-bottom:8px;display:none"></div>
       <label style="display:flex;gap:8px;align-items:center;margin-bottom:12px;cursor:pointer">
         <input data-role="attachments" type="checkbox" style="margin:0">
-        <span>Include attachments (images &amp; files)</span>
+        <span>${t.attachmentsLabel}</span>
       </label>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
-        <span data-role="total" style="color:#666">Total: unknown</span>
-        <button data-role="count" style="padding:3px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#333;cursor:pointer;font-size:12px">Load count</button>
+        <span data-role="total" style="color:#666">${t.totalUnknown}</span>
+        <button data-role="count" style="padding:3px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#333;cursor:pointer;font-size:12px">${t.loadCount}</button>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button data-role="cancel" style="padding:7px 14px;border-radius:8px;border:1px solid #ccc;background:#fff;color:#111;cursor:pointer">Cancel</button>
-        <button data-role="ok" style="padding:7px 14px;border-radius:8px;border:none;background:#111;color:#fff;cursor:pointer">Export</button>
+        <button data-role="cancel" style="padding:7px 14px;border-radius:8px;border:1px solid #ccc;background:#fff;color:#111;cursor:pointer">${t.cancel}</button>
+        <button data-role="ok" style="padding:7px 14px;border-radius:8px;border:none;background:#111;color:#fff;cursor:pointer">${t.export}</button>
       </div>`;
+    panel.lang = detectLocale();
     overlay.appendChild(panel);
 
     const fromInput = panel.querySelector<HTMLInputElement>('[data-role="from"]')!;
@@ -186,19 +191,19 @@ function askChoices(adapter: PlatformAdapter): Promise<ExportChoices | null> {
 
     countButton.addEventListener("click", async () => {
       countButton.disabled = true;
-      countButton.textContent = "Counting…";
+      countButton.textContent = t.counting;
       try {
         const total = await countConversations(adapter, (n) => {
-          totalLabel.textContent = `Total: ${n}…`;
+          totalLabel.textContent = t.totalCounting(n);
         });
-        totalLabel.textContent = `Total: ${total}`;
+        totalLabel.textContent = t.total(total);
         toInput.placeholder = String(total);
         countButton.remove();
       } catch (error) {
         console.error("[ai-chat-exporter] count failed", error);
-        totalLabel.textContent = "Total: failed — see console";
+        totalLabel.textContent = t.totalFailed;
         countButton.disabled = false;
-        countButton.textContent = "Retry";
+        countButton.textContent = t.retry;
       }
     });
 
@@ -211,7 +216,7 @@ function askChoices(adapter: PlatformAdapter): Promise<ExportChoices | null> {
       const from = Number.parseInt(fromInput.value, 10);
       const to = toInput.value.trim() === "" ? undefined : Number.parseInt(toInput.value, 10);
       if (!Number.isInteger(from) || from < 1 || (to !== undefined && (!Number.isInteger(to) || to < from))) {
-        errorBox.textContent = "Invalid range: “from” must be ≥ 1 and “to” must be ≥ “from”.";
+        errorBox.textContent = t.invalidRange;
         errorBox.style.display = "block";
         return;
       }
@@ -235,7 +240,8 @@ function askChoices(adapter: PlatformAdapter): Promise<ExportChoices | null> {
 
 function mountButton(): void {
   const button = document.createElement("button");
-  button.textContent = "Export all chats";
+  button.textContent = t.buttonExport;
+  button.lang = detectLocale();
   Object.assign(button.style, {
     position: "fixed",
     right: "20px",
@@ -258,7 +264,7 @@ function mountButton(): void {
   button.addEventListener("click", async () => {
     const adapter = resolveAdapter();
     if (!adapter) {
-      setStatus("Unsupported page.");
+      setStatus(t.unsupportedPage);
       return;
     }
     const choices = await askChoices(adapter);
@@ -268,11 +274,11 @@ function mountButton(): void {
       await runExport(adapter, setStatus, choices);
     } catch (error) {
       console.error("[ai-chat-exporter]", error);
-      setStatus("Export failed — see console.");
+      setStatus(t.exportFailed);
     } finally {
       setTimeout(() => {
         button.disabled = false;
-        button.textContent = "Export all chats";
+        button.textContent = t.buttonExport;
       }, 4000);
     }
   });

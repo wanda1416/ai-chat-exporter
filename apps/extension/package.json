@@ -1,6 +1,6 @@
 {
   "name": "@ace/extension",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "description": "Chrome extension (MV3) shell — same in-page bootstrap as the userscript, shipped via a MAIN-world content script.",
   "type": "module",

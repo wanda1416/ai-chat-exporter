@@ -2,7 +2,7 @@
 // @name               AI Chat 全部对话导出 / Export All Chats (Kimi, Gemini, Grok, DeepSeek, ChatGPT, Yuanbao & Hunyuan)
 // @name:zh-CN         AI Chat 全部对话导出（Kimi、Gemini、Grok、DeepSeek、ChatGPT、腾讯元宝 & 混元）
 // @namespace          https://github.com/wanda1416/ai-chat-exporter
-// @version            0.1.3
+// @version            0.1.4
 // @author             wanda1416
 // @description        Batch-export your Kimi, Gemini, Grok, DeepSeek, ChatGPT, Yuanbao & Hunyuan conversations to Markdown + JSON, zipped. Pick a range, one click — runs entirely in your browser, no data sent anywhere.
 // @description:zh-CN  一键批量导出 Kimi / Gemini / Grok / DeepSeek / ChatGPT / 腾讯元宝 / 腾讯混元 全部对话为 Markdown + JSON 并打包 zip。支持导出区间选择，纯本地运行，数据不离开浏览器。
@@ -235,16 +235,16 @@
     }
     return Object.values(mapping).map((node) => node.message).filter((message) => Boolean(message)).sort((a, b) => (a.create_time ?? 0) - (b.create_time ?? 0));
   }
-  function linkChildren$3(messages) {
+  function linkChildren$3(messages2) {
     const childrenOf = /* @__PURE__ */ new Map();
-    for (const m of messages) {
+    for (const m of messages2) {
       if (m.parentId) {
         const list = childrenOf.get(m.parentId) ?? [];
         list.push(m.id);
         childrenOf.set(m.parentId, list);
       }
     }
-    for (const m of messages) {
+    for (const m of messages2) {
       const children = childrenOf.get(m.id);
       if (children == null ? void 0 : children.length) m.childrenIds = children;
     }
@@ -278,26 +278,26 @@
     var _a2;
     const mapping = detail.mapping ?? {};
     const ordered = activePath$1(mapping, detail.current_node);
-    const messages = [];
+    const messages2 = [];
     const attachments = [];
     const seenAttachment = /* @__PURE__ */ new Set();
     for (const raw of ordered) {
       if (!isVisible(raw)) continue;
       const message = parseMessage$2(raw, attachments, seenAttachment);
-      if (message) messages.push(message);
+      if (message) messages2.push(message);
     }
-    messages.forEach((message, index) => {
-      message.parentId = index === 0 ? null : messages[index - 1].id;
+    messages2.forEach((message, index) => {
+      message.parentId = index === 0 ? null : messages2[index - 1].id;
     });
-    linkChildren$3(messages);
-    const firstUserPart = (_a2 = messages.find((m) => m.role === "user")) == null ? void 0 : _a2.content.find((c) => c.type === "text");
+    linkChildren$3(messages2);
+    const firstUserPart = (_a2 = messages2.find((m) => m.role === "user")) == null ? void 0 : _a2.content.find((c) => c.type === "text");
     const fallbackTitle = (firstUserPart == null ? void 0 : firstUserPart.type) === "text" ? firstUserPart.text : "";
     const conversation = {
       schemaVersion: "1",
       id: conversationId,
       platform: PLATFORM$6,
       title: detail.title || (meta == null ? void 0 : meta.title) || fallbackTitle,
-      messages
+      messages: messages2
     };
     if (detail.default_model_slug) conversation.model = detail.default_model_slug;
     const createdAt = (meta == null ? void 0 : meta.createdAt) ?? toIso$1(detail.create_time);
@@ -471,9 +471,9 @@
     }
     return { message, attachments };
   }
-  function activePath(messages, currentId) {
+  function activePath(messages2, currentId) {
     const byId = /* @__PURE__ */ new Map();
-    for (const m of messages) {
+    for (const m of messages2) {
       if (typeof m.message_id === "number") byId.set(m.message_id, m);
     }
     if (currentId !== void 0 && byId.has(currentId)) {
@@ -488,18 +488,18 @@
       }
       return chain.reverse();
     }
-    return [...messages].sort((a, b) => (a.message_id ?? 0) - (b.message_id ?? 0));
+    return [...messages2].sort((a, b) => (a.message_id ?? 0) - (b.message_id ?? 0));
   }
-  function linkChildren$2(messages) {
+  function linkChildren$2(messages2) {
     const childrenOf = /* @__PURE__ */ new Map();
-    for (const m of messages) {
+    for (const m of messages2) {
       if (m.parentId) {
         const list = childrenOf.get(m.parentId) ?? [];
         list.push(m.id);
         childrenOf.set(m.parentId, list);
       }
     }
-    for (const m of messages) {
+    for (const m of messages2) {
       const children = childrenOf.get(m.id);
       if (children == null ? void 0 : children.length) m.childrenIds = children;
     }
@@ -534,27 +534,27 @@
     var _a2;
     const session = data.chat_session ?? {};
     const ordered = activePath(data.chat_messages ?? [], session.current_message_id);
-    const messages = [];
+    const messages2 = [];
     const attachments = [];
     const seenAttachment = /* @__PURE__ */ new Set();
     for (const raw of ordered) {
       const parsed = parseMessage$1(raw);
-      messages.push(parsed.message);
+      messages2.push(parsed.message);
       for (const att of parsed.attachments) {
         if (seenAttachment.has(att.id)) continue;
         seenAttachment.add(att.id);
         attachments.push(att);
       }
     }
-    linkChildren$2(messages);
-    const firstUserPart = (_a2 = messages.find((m) => m.role === "user")) == null ? void 0 : _a2.content.find((c) => c.type === "text");
+    linkChildren$2(messages2);
+    const firstUserPart = (_a2 = messages2.find((m) => m.role === "user")) == null ? void 0 : _a2.content.find((c) => c.type === "text");
     const fallbackTitle = (firstUserPart == null ? void 0 : firstUserPart.type) === "text" ? firstUserPart.text : "";
     const conversation = {
       schemaVersion: "1",
       id: conversationId,
       platform: PLATFORM$5,
       title: session.title || (meta == null ? void 0 : meta.title) || fallbackTitle,
-      messages
+      messages: messages2
     };
     const createdAt = (meta == null ? void 0 : meta.createdAt) ?? toIso(session.inserted_at);
     const updatedAt = (meta == null ? void 0 : meta.updatedAt) ?? toIso(session.updated_at);
@@ -682,12 +682,12 @@
     return asString(at(at(chosen, 1), 0)) ?? "";
   }
   function parseTurn(turn) {
-    const messages = [];
+    const messages2 = [];
     const userText = asString(at(at(at(turn, 2), 0), 0));
     const userId = asString(at(at(turn, 2), 4));
     if (userText) {
       const content = [{ type: "text", text: userText }];
-      messages.push({ id: userId ?? `${asString(at(at(turn, 0), 1)) ?? "turn"}-user`, role: "user", content });
+      messages2.push({ id: userId ?? `${asString(at(at(turn, 0), 1)) ?? "turn"}-user`, role: "user", content });
     }
     const candidatesBlock = at(turn, 3);
     const markdown = selectedMarkdown(candidatesBlock);
@@ -703,9 +703,9 @@
       if (timestamp) message.timestamp = timestamp;
       const model = findModel(candidatesBlock);
       if (model) message.model = model;
-      messages.push(message);
+      messages2.push(message);
     }
-    return messages;
+    return messages2;
   }
   function toConversation$4(conversationId, payload, title) {
     var _a2, _b2, _c;
@@ -714,8 +714,8 @@
       const tb = turnTime(b);
       return ta !== void 0 && tb !== void 0 ? ta - tb : 0;
     });
-    const messages = turns.flatMap(parseTurn);
-    const firstUserText = (_b2 = (_a2 = messages.find((m) => m.role === "user")) == null ? void 0 : _a2.content.find(
+    const messages2 = turns.flatMap(parseTurn);
+    const firstUserText = (_b2 = (_a2 = messages2.find((m) => m.role === "user")) == null ? void 0 : _a2.content.find(
       (part) => part.type === "text"
     )) == null ? void 0 : _b2.text;
     const derivedTitle = firstUserText ? firstUserText.slice(0, 40) + (firstUserText.length > 40 ? "…" : "") : "Gemini conversation";
@@ -724,11 +724,11 @@
       id: conversationId,
       platform: PLATFORM$4,
       title: title ?? derivedTitle,
-      messages
+      messages: messages2
     };
-    const model = (_c = messages.find((m) => m.model)) == null ? void 0 : _c.model;
+    const model = (_c = messages2.find((m) => m.model)) == null ? void 0 : _c.model;
     if (model) conversation.model = model;
-    const timestamps = messages.map((m) => m.timestamp).filter((t) => Boolean(t));
+    const timestamps = messages2.map((m) => m.timestamp).filter((t2) => Boolean(t2));
     if (timestamps.length) {
       conversation.createdAt = timestamps[0];
       conversation.updatedAt = timestamps[timestamps.length - 1];
@@ -951,26 +951,26 @@
     if (raw.parentResponseId !== void 0) message.parentId = raw.parentResponseId || null;
     return { message, attachments };
   }
-  function sortChronologically$1(messages) {
+  function sortChronologically$1(messages2) {
     const originalIndex = /* @__PURE__ */ new Map();
-    messages.forEach((m, i) => originalIndex.set(m, i));
-    messages.sort((a, b) => {
+    messages2.forEach((m, i) => originalIndex.set(m, i));
+    messages2.sort((a, b) => {
       const ta = a.timestamp ?? "";
       const tb = b.timestamp ?? "";
       if (ta && tb && ta !== tb) return ta < tb ? -1 : 1;
       return (originalIndex.get(a) ?? 0) - (originalIndex.get(b) ?? 0);
     });
   }
-  function linkChildren$1(messages) {
+  function linkChildren$1(messages2) {
     const childrenOf = /* @__PURE__ */ new Map();
-    for (const m of messages) {
+    for (const m of messages2) {
       if (m.parentId) {
         const list = childrenOf.get(m.parentId) ?? [];
         list.push(m.id);
         childrenOf.set(m.parentId, list);
       }
     }
-    for (const m of messages) {
+    for (const m of messages2) {
       const children = childrenOf.get(m.id);
       if (children == null ? void 0 : children.length) m.childrenIds = children;
     }
@@ -1014,29 +1014,29 @@
         ordered.push(r);
       }
     }
-    const messages = [];
+    const messages2 = [];
     const attachments = [];
     const seenAttachment = /* @__PURE__ */ new Set();
     for (const raw of ordered) {
       const parsed = parseResponse(raw);
-      messages.push(parsed.message);
+      messages2.push(parsed.message);
       for (const att of parsed.attachments) {
         if (seenAttachment.has(att.id)) continue;
         seenAttachment.add(att.id);
         attachments.push(att);
       }
     }
-    sortChronologically$1(messages);
-    linkChildren$1(messages);
-    const model = (_a2 = [...messages].reverse().find((m) => m.model)) == null ? void 0 : _a2.model;
-    const firstUserPart = (_b2 = messages.find((m) => m.role === "user")) == null ? void 0 : _b2.content.find((c) => c.type === "text");
+    sortChronologically$1(messages2);
+    linkChildren$1(messages2);
+    const model = (_a2 = [...messages2].reverse().find((m) => m.model)) == null ? void 0 : _a2.model;
+    const firstUserPart = (_b2 = messages2.find((m) => m.role === "user")) == null ? void 0 : _b2.content.find((c) => c.type === "text");
     const fallbackTitle = (firstUserPart == null ? void 0 : firstUserPart.type) === "text" ? firstUserPart.text : "";
     const conversation = {
       schemaVersion: "1",
       id: conversationId,
       platform: PLATFORM$3,
       title: (meta == null ? void 0 : meta.title) || fallbackTitle,
-      messages
+      messages: messages2
     };
     if (meta == null ? void 0 : meta.createdAt) conversation.createdAt = meta.createdAt;
     if (meta == null ? void 0 : meta.updatedAt) conversation.updatedAt = meta.updatedAt;
@@ -1166,9 +1166,9 @@
     }
   }
   function guessMimeType$1(tag, fileName) {
-    const t = (tag ?? "").toLowerCase();
-    if (t === "txt" || t === "text") return "text/plain";
-    if (t === "pdf") return "application/pdf";
+    const t2 = (tag ?? "").toLowerCase();
+    if (t2 === "txt" || t2 === "text") return "text/plain";
+    if (t2 === "pdf") return "application/pdf";
     if (/\.(png|jpe?g|webp|gif|bmp)$/i.test(fileName ?? "")) return "image/*";
     return void 0;
   }
@@ -1316,13 +1316,13 @@ ${incoming.content}`,
     const first = pages[0] ?? {};
     const conversationId = (meta == null ? void 0 : meta.id) ?? first.id ?? "";
     const agentId = (meta == null ? void 0 : meta.agentId) ?? DEFAULT_AGENT_ID$1;
-    const messages = [];
+    const messages2 = [];
     const attachments = [];
     const seenAttachment = /* @__PURE__ */ new Set();
     for (const turn of orderedTurns$1(pages.flatMap((page) => page.convs ?? []))) {
       const parsed = toMessage$1(turn, conversationId);
       if (!parsed) continue;
-      messages.push(parsed.message);
+      messages2.push(parsed.message);
       for (const attachment of parsed.attachments) {
         if (seenAttachment.has(attachment.id)) continue;
         seenAttachment.add(attachment.id);
@@ -1337,18 +1337,18 @@ ${incoming.content}`,
         attachments.push(attachment);
       }
     }
-    const firstUserText = (_a2 = messages.find((message) => message.role === "user")) == null ? void 0 : _a2.content.find((part) => part.type === "text");
+    const firstUserText = (_a2 = messages2.find((message) => message.role === "user")) == null ? void 0 : _a2.content.find((part) => part.type === "text");
     const fallbackTitle = (firstUserText == null ? void 0 : firstUserText.type) === "text" ? firstUserText.text.replace(/\s+/g, " ").slice(0, 80) : "";
-    const model = ((_b2 = [...messages].reverse().find((message) => message.model)) == null ? void 0 : _b2.model) ?? (meta == null ? void 0 : meta.chatModelId) ?? first.chatModelId ?? first.modelId;
+    const model = ((_b2 = [...messages2].reverse().find((message) => message.model)) == null ? void 0 : _b2.model) ?? (meta == null ? void 0 : meta.chatModelId) ?? first.chatModelId ?? first.modelId;
     const conversation = {
       schemaVersion: "1",
       id: conversationId,
       platform: PLATFORM$2,
       title: (meta == null ? void 0 : meta.title) || first.title || fallbackTitle,
-      messages
+      messages: messages2
     };
-    const earliest = (_c = messages.find((message) => message.timestamp)) == null ? void 0 : _c.timestamp;
-    const latest = (_d = [...messages].reverse().find((message) => message.timestamp)) == null ? void 0 : _d.timestamp;
+    const earliest = (_c = messages2.find((message) => message.timestamp)) == null ? void 0 : _c.timestamp;
+    const latest = (_d = [...messages2].reverse().find((message) => message.timestamp)) == null ? void 0 : _d.timestamp;
     const createdAt = (meta == null ? void 0 : meta.createdAt) ?? toIsoTime$1(first.firstRepliedAt) ?? earliest;
     const updatedAt = (meta == null ? void 0 : meta.updatedAt) ?? toIsoTime$1(first.lastRepliedAt) ?? latest;
     if (createdAt) conversation.createdAt = createdAt;
@@ -1550,26 +1550,26 @@ ${incoming.content}`,
     if (raw.parentId !== void 0) message.parentId = raw.parentId || null;
     return message;
   }
-  function sortChronologically(messages) {
+  function sortChronologically(messages2) {
     const originalIndex = /* @__PURE__ */ new Map();
-    messages.forEach((m, i) => originalIndex.set(m, i));
-    messages.sort((a, b) => {
+    messages2.forEach((m, i) => originalIndex.set(m, i));
+    messages2.sort((a, b) => {
       const ta = a.timestamp ?? "";
       const tb = b.timestamp ?? "";
       if (ta && tb && ta !== tb) return ta < tb ? -1 : 1;
       return (originalIndex.get(a) ?? 0) - (originalIndex.get(b) ?? 0);
     });
   }
-  function linkChildren(messages) {
+  function linkChildren(messages2) {
     const childrenOf = /* @__PURE__ */ new Map();
-    for (const m of messages) {
+    for (const m of messages2) {
       if (m.parentId) {
         const list = childrenOf.get(m.parentId) ?? [];
         list.push(m.id);
         childrenOf.set(m.parentId, list);
       }
     }
-    for (const m of messages) {
+    for (const m of messages2) {
       const children = childrenOf.get(m.id);
       if (children == null ? void 0 : children.length) m.childrenIds = children;
     }
@@ -1600,10 +1600,10 @@ ${incoming.content}`,
     }
     return metas;
   }
-  function toConversation$1(chatId, chat, messages) {
+  function toConversation$1(chatId, chat, messages2) {
     const summary = chat.chat ?? {};
     const attachments = parseAttachments(chat);
-    const parsedMessages = (messages.messages ?? []).map(parseMessage);
+    const parsedMessages = (messages2.messages ?? []).map(parseMessage);
     sortChronologically(parsedMessages);
     linkChildren(parsedMessages);
     const conversation = {
@@ -1647,11 +1647,11 @@ ${incoming.content}`,
       }
     }
     async fetchConversation(id) {
-      const [chat, messages] = await Promise.all([
+      const [chat, messages2] = await Promise.all([
         this.client.getChat(id),
         this.client.listMessages(id)
       ]);
-      return toConversation$1(id, chat, messages);
+      return toConversation$1(id, chat, messages2);
     }
   }
   const BASE_URL = "https://yuanbao.tencent.com";
@@ -1734,9 +1734,9 @@ ${incoming.content}`,
     }
   }
   function guessMimeType(tag, fileName) {
-    const t = (tag ?? "").toLowerCase();
-    if (t === "txt" || t === "text") return "text/plain";
-    if (t === "pdf") return "application/pdf";
+    const t2 = (tag ?? "").toLowerCase();
+    if (t2 === "txt" || t2 === "text") return "text/plain";
+    if (t2 === "pdf") return "application/pdf";
     if (/\.(png|jpe?g|webp|gif|bmp)$/i.test(fileName ?? "")) return "image/*";
     return void 0;
   }
@@ -1881,12 +1881,12 @@ ${incoming.content}`,
     const conversationId = (meta == null ? void 0 : meta.id) ?? first.id ?? "";
     const agentId = (meta == null ? void 0 : meta.agentId) ?? first.agentId ?? DEFAULT_AGENT_ID;
     const turns = orderedTurns(pages.flatMap((page) => page.convs ?? []));
-    const messages = [];
+    const messages2 = [];
     const attachments = [];
     const seenAttachment = /* @__PURE__ */ new Set();
     for (const turn of turns) {
       const parsed = toMessage(turn, conversationId);
-      messages.push(parsed.message);
+      messages2.push(parsed.message);
       for (const attachment of parsed.attachments) {
         if (seenAttachment.has(attachment.id)) continue;
         seenAttachment.add(attachment.id);
@@ -1901,18 +1901,18 @@ ${incoming.content}`,
         attachments.push(attachment);
       }
     }
-    const firstUserText = (_a2 = messages.find((message) => message.role === "user")) == null ? void 0 : _a2.content.find((part) => part.type === "text");
+    const firstUserText = (_a2 = messages2.find((message) => message.role === "user")) == null ? void 0 : _a2.content.find((part) => part.type === "text");
     const fallbackTitle = (firstUserText == null ? void 0 : firstUserText.type) === "text" ? firstUserText.text.replace(/\s+/g, " ").slice(0, 80) : "";
-    const model = ((_b2 = [...messages].reverse().find((message) => message.model)) == null ? void 0 : _b2.model) ?? first.modelId;
+    const model = ((_b2 = [...messages2].reverse().find((message) => message.model)) == null ? void 0 : _b2.model) ?? first.modelId;
     const conversation = {
       schemaVersion: "1",
       id: conversationId,
       platform: PLATFORM,
       title: (meta == null ? void 0 : meta.title) || first.title || fallbackTitle,
-      messages
+      messages: messages2
     };
-    const createdAt = earliestTime(meta == null ? void 0 : meta.createdAt, pages) ?? toIsoTime(first.firstRepliedAt) ?? ((_c = messages.find((m) => m.timestamp)) == null ? void 0 : _c.timestamp);
-    const updatedAt = (meta == null ? void 0 : meta.updatedAt) ?? toIsoTime(first.lastRepliedAt) ?? ((_d = [...messages].reverse().find((m) => m.timestamp)) == null ? void 0 : _d.timestamp);
+    const createdAt = earliestTime(meta == null ? void 0 : meta.createdAt, pages) ?? toIsoTime(first.firstRepliedAt) ?? ((_c = messages2.find((m) => m.timestamp)) == null ? void 0 : _c.timestamp);
+    const updatedAt = (meta == null ? void 0 : meta.updatedAt) ?? toIsoTime(first.lastRepliedAt) ?? ((_d = [...messages2].reverse().find((m) => m.timestamp)) == null ? void 0 : _d.timestamp);
     if (createdAt) conversation.createdAt = createdAt;
     if (updatedAt) conversation.updatedAt = updatedAt;
     if (model) conversation.model = model;
@@ -2478,46 +2478,46 @@ ${incoming.content}`,
     d[o + 2] |= v >> 16;
   };
   var hTree = function(d, mb) {
-    var t = [];
+    var t2 = [];
     for (var i = 0; i < d.length; ++i) {
       if (d[i])
-        t.push({ s: i, f: d[i] });
+        t2.push({ s: i, f: d[i] });
     }
-    var s = t.length;
-    var t2 = t.slice();
+    var s = t2.length;
+    var t22 = t2.slice();
     if (!s)
       return { t: et, l: 0 };
     if (s == 1) {
-      var v = new u8(t[0].s + 1);
-      v[t[0].s] = 1;
+      var v = new u8(t2[0].s + 1);
+      v[t2[0].s] = 1;
       return { t: v, l: 1 };
     }
-    t.sort(function(a, b) {
+    t2.sort(function(a, b) {
       return a.f - b.f;
     });
-    t.push({ s: -1, f: 25001 });
-    var l = t[0], r = t[1], i0 = 0, i1 = 1, i2 = 2;
-    t[0] = { s: -1, f: l.f + r.f, l, r };
+    t2.push({ s: -1, f: 25001 });
+    var l = t2[0], r = t2[1], i0 = 0, i1 = 1, i2 = 2;
+    t2[0] = { s: -1, f: l.f + r.f, l, r };
     while (i1 != s - 1) {
-      l = t[t[i0].f < t[i2].f ? i0++ : i2++];
-      r = t[i0 != i1 && t[i0].f < t[i2].f ? i0++ : i2++];
-      t[i1++] = { s: -1, f: l.f + r.f, l, r };
+      l = t2[t2[i0].f < t2[i2].f ? i0++ : i2++];
+      r = t2[i0 != i1 && t2[i0].f < t2[i2].f ? i0++ : i2++];
+      t2[i1++] = { s: -1, f: l.f + r.f, l, r };
     }
-    var maxSym = t2[0].s;
+    var maxSym = t22[0].s;
     for (var i = 1; i < s; ++i) {
-      if (t2[i].s > maxSym)
-        maxSym = t2[i].s;
+      if (t22[i].s > maxSym)
+        maxSym = t22[i].s;
     }
     var tr = new u16(maxSym + 1);
-    var mbt = ln(t[i1 - 1], tr, 0);
+    var mbt = ln(t2[i1 - 1], tr, 0);
     if (mbt > mb) {
       var i = 0, dt = 0;
       var lft = mbt - mb, cst = 1 << lft;
-      t2.sort(function(a, b) {
+      t22.sort(function(a, b) {
         return tr[b.s] - tr[a.s] || a.f - b.f;
       });
       for (; i < s; ++i) {
-        var i2_1 = t2[i].s;
+        var i2_1 = t22[i].s;
         if (tr[i2_1] > mb) {
           dt += cst - (1 << mbt - tr[i2_1]);
           tr[i2_1] = mb;
@@ -2526,14 +2526,14 @@ ${incoming.content}`,
       }
       dt >>= lft;
       while (dt > 0) {
-        var i2_2 = t2[i].s;
+        var i2_2 = t22[i].s;
         if (tr[i2_2] < mb)
           dt -= 1 << mb - tr[i2_2]++ - 1;
         else
           ++i;
       }
       for (; i >= 0 && dt; --i) {
-        var i2_3 = t2[i].s;
+        var i2_3 = t22[i].s;
         if (tr[i2_3] == mb) {
           --tr[i2_3];
           ++dt;
@@ -2766,14 +2766,14 @@ ${incoming.content}`,
     return slc(o, 0, pre + shft(pos) + post);
   };
   var crct = /* @__PURE__ */ function() {
-    var t = new Int32Array(256);
+    var t2 = new Int32Array(256);
     for (var i = 0; i < 256; ++i) {
       var c = i, k = 9;
       while (--k)
         c = (c & 1 && -306674912) ^ c >>> 1;
-      t[i] = c;
+      t2[i] = c;
     }
-    return t;
+    return t2;
   }();
   var crc = function() {
     var c = -1;
@@ -3202,6 +3202,90 @@ ${incoming.content}`,
       return new Blob(this.parts, { type: "application/zip" });
     }
   }
+  const en = {
+    buttonExport: "Export all chats",
+    dialogTitle: "Export conversations",
+    dialogHint: "Range is 1-based and inclusive. Leave “to” empty to export to the end.",
+    attachmentsLabel: "Include attachments (images & files)",
+    totalUnknown: "Total: unknown",
+    totalCounting: (count) => `Total: ${count}…`,
+    total: (count) => `Total: ${count}`,
+    totalFailed: "Total: failed — see console",
+    loadCount: "Load count",
+    counting: "Counting…",
+    retry: "Retry",
+    rangeToPlaceholder: "end",
+    cancel: "Cancel",
+    export: "Export",
+    invalidRange: "Invalid range: “from” must be ≥ 1 and “to” must be ≥ “from”.",
+    unsupportedPage: "Unsupported page.",
+    exportFailed: "Export failed — see console.",
+    noConversations: "No conversations exported.",
+    saved: (count) => `Saved ${count} conversations`,
+    filesSaved: (count) => `+${count} files`,
+    filesSkipped: (count) => `${count} files skipped`,
+    failed: (count) => `${count} failed`,
+    progressListing: (count) => `Listing conversations… (${count})`,
+    progressFetching: (done, total, title) => `Fetching ${done}/${total}: ${title}`,
+    progressAttachments: (done, total) => `Downloading files ${done}/${total}…`,
+    progressExporting: (done, total) => `Exporting ${done}/${total}…`,
+    progressDone: (count) => `Done — ${count} conversations.`
+  };
+  const zhCN = {
+    buttonExport: "导出全部对话",
+    dialogTitle: "导出对话",
+    dialogHint: "区间从 1 开始、含首尾。留空“到”表示导出到末尾。",
+    attachmentsLabel: "包含附件（图片与文件）",
+    totalUnknown: "总数：未知",
+    totalCounting: (count) => `总数：${count}…`,
+    total: (count) => `总数：${count}`,
+    totalFailed: "总数获取失败——详见控制台",
+    loadCount: "统计总数",
+    counting: "统计中…",
+    retry: "重试",
+    rangeToPlaceholder: "末尾",
+    cancel: "取消",
+    export: "导出",
+    invalidRange: "区间无效：“从”需 ≥ 1，且“到”需 ≥ “从”。",
+    unsupportedPage: "当前页面不受支持。",
+    exportFailed: "导出失败——详见控制台。",
+    noConversations: "没有导出任何对话。",
+    saved: (count) => `已保存 ${count} 个对话`,
+    filesSaved: (count) => `+${count} 个文件`,
+    filesSkipped: (count) => `${count} 个文件已跳过`,
+    failed: (count) => `${count} 个失败`,
+    progressListing: (count) => `正在列出对话…（${count}）`,
+    progressFetching: (done, total, title) => `正在拉取 ${done}/${total}：${title}`,
+    progressAttachments: (done, total) => `正在下载文件 ${done}/${total}…`,
+    progressExporting: (done, total) => `正在导出 ${done}/${total}…`,
+    progressDone: (count) => `完成——共 ${count} 个对话。`
+  };
+  const dictionaries = { en, "zh-CN": zhCN };
+  function detectLocale() {
+    var _a2;
+    if (typeof window !== "undefined") {
+      const override = window.__ACE_LOCALE__;
+      if (override === "en" || override === "zh-CN") return override;
+      if (override === "zh" || (override == null ? void 0 : override.startsWith("zh"))) return "zh-CN";
+    }
+    if (typeof navigator !== "undefined") {
+      const languages = ((_a2 = navigator.languages) == null ? void 0 : _a2.length) ? navigator.languages : [navigator.language];
+      for (const language of languages) {
+        if (typeof language !== "string" || !language) continue;
+        if (/^zh(\b|-|_)/i.test(language)) return "zh-CN";
+        if (/^en(\b|-|_)/i.test(language)) return "en";
+      }
+    }
+    if (typeof document !== "undefined") {
+      const lang = document.documentElement.lang;
+      if (typeof lang === "string" && /^zh/i.test(lang)) return "zh-CN";
+    }
+    return "en";
+  }
+  function messages(locale = detectLocale()) {
+    return dictionaries[locale];
+  }
+  const t = messages(detectLocale());
   function download(blob, filename) {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -3214,15 +3298,15 @@ ${incoming.content}`,
     var _a2;
     switch (p.phase) {
       case "list":
-        return `Listing conversations… (${p.total})`;
+        return t.progressListing(p.total);
       case "fetch":
-        return `Fetching ${p.completed + 1}/${p.total}: ${((_a2 = p.meta) == null ? void 0 : _a2.title) ?? ""}`;
+        return t.progressFetching(p.completed + 1, p.total, ((_a2 = p.meta) == null ? void 0 : _a2.title) ?? "");
       case "attachments":
-        return `Downloading files ${p.completed + 1}/${p.total}…`;
+        return t.progressAttachments(p.completed + 1, p.total);
       case "export":
-        return `Exporting ${p.completed}/${p.total}…`;
+        return t.progressExporting(p.completed, p.total);
       case "done":
-        return `Done — ${p.completed} conversations.`;
+        return t.progressDone(p.completed);
     }
   }
   function resolveAdapter() {
@@ -3250,15 +3334,15 @@ ${incoming.content}`,
       onError: (id, error) => console.error("[ai-chat-exporter] failed", id, error)
     });
     if (!conversations.length) {
-      setStatus("No conversations exported.");
+      setStatus(t.noConversations);
       return;
     }
     const zip = await sink.finish();
     download(zip, `${adapter.platform}-export-${(/* @__PURE__ */ new Date()).toISOString().slice(0, 10)}.zip`);
-    const bits = [`Saved ${conversations.length} conversations`];
-    if (attachmentsSaved) bits.push(`+${attachmentsSaved} files`);
-    if (attachmentsSkipped) bits.push(`${attachmentsSkipped} files skipped`);
-    if (failed.length) bits.push(`${failed.length} failed`);
+    const bits = [t.saved(conversations.length)];
+    if (attachmentsSaved) bits.push(t.filesSaved(attachmentsSaved));
+    if (attachmentsSkipped) bits.push(t.filesSkipped(attachmentsSkipped));
+    if (failed.length) bits.push(t.failed(failed.length));
     setStatus(`${bits[0]}${bits.length > 1 ? ` (${bits.slice(1).join(", ")})` : ""}.`);
   }
   const countCache = /* @__PURE__ */ new Map();
@@ -3304,28 +3388,29 @@ ${incoming.content}`,
         boxShadow: "0 8px 30px rgba(0,0,0,.35)"
       });
       panel.innerHTML = `
-      <div style="font-size:15px;font-weight:600;margin-bottom:8px">Export conversations</div>
-      <div style="color:#666;margin-bottom:12px">Range is 1-based and inclusive. Leave “to” empty to export to the end.</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:8px">${t.dialogTitle}</div>
+      <div style="color:#666;margin-bottom:12px">${t.dialogHint}</div>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
         <input data-role="from" type="number" min="1" step="1" value="1"
                style="width:0;flex:1;padding:6px 8px;border:1px solid #ccc;border-radius:6px;background:#fff;color:#111">
         <span>–</span>
-        <input data-role="to" type="number" min="1" step="1" placeholder="end"
+        <input data-role="to" type="number" min="1" step="1" placeholder="${t.rangeToPlaceholder}"
                style="width:0;flex:1;padding:6px 8px;border:1px solid #ccc;border-radius:6px;background:#fff;color:#111">
       </div>
       <div data-role="error" style="color:#c00;margin-bottom:8px;display:none"></div>
       <label style="display:flex;gap:8px;align-items:center;margin-bottom:12px;cursor:pointer">
         <input data-role="attachments" type="checkbox" style="margin:0">
-        <span>Include attachments (images &amp; files)</span>
+        <span>${t.attachmentsLabel}</span>
       </label>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:16px">
-        <span data-role="total" style="color:#666">Total: unknown</span>
-        <button data-role="count" style="padding:3px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#333;cursor:pointer;font-size:12px">Load count</button>
+        <span data-role="total" style="color:#666">${t.totalUnknown}</span>
+        <button data-role="count" style="padding:3px 10px;border-radius:6px;border:1px solid #ccc;background:#fff;color:#333;cursor:pointer;font-size:12px">${t.loadCount}</button>
       </div>
       <div style="display:flex;gap:8px;justify-content:flex-end">
-        <button data-role="cancel" style="padding:7px 14px;border-radius:8px;border:1px solid #ccc;background:#fff;color:#111;cursor:pointer">Cancel</button>
-        <button data-role="ok" style="padding:7px 14px;border-radius:8px;border:none;background:#111;color:#fff;cursor:pointer">Export</button>
+        <button data-role="cancel" style="padding:7px 14px;border-radius:8px;border:1px solid #ccc;background:#fff;color:#111;cursor:pointer">${t.cancel}</button>
+        <button data-role="ok" style="padding:7px 14px;border-radius:8px;border:none;background:#111;color:#fff;cursor:pointer">${t.export}</button>
       </div>`;
+      panel.lang = detectLocale();
       overlay.appendChild(panel);
       const fromInput = panel.querySelector('[data-role="from"]');
       const toInput = panel.querySelector('[data-role="to"]');
@@ -3335,19 +3420,19 @@ ${incoming.content}`,
       const countButton = panel.querySelector('[data-role="count"]');
       countButton.addEventListener("click", async () => {
         countButton.disabled = true;
-        countButton.textContent = "Counting…";
+        countButton.textContent = t.counting;
         try {
           const total = await countConversations(adapter, (n) => {
-            totalLabel.textContent = `Total: ${n}…`;
+            totalLabel.textContent = t.totalCounting(n);
           });
-          totalLabel.textContent = `Total: ${total}`;
+          totalLabel.textContent = t.total(total);
           toInput.placeholder = String(total);
           countButton.remove();
         } catch (error) {
           console.error("[ai-chat-exporter] count failed", error);
-          totalLabel.textContent = "Total: failed — see console";
+          totalLabel.textContent = t.totalFailed;
           countButton.disabled = false;
-          countButton.textContent = "Retry";
+          countButton.textContent = t.retry;
         }
       });
       const close = (result) => {
@@ -3358,7 +3443,7 @@ ${incoming.content}`,
         const from = Number.parseInt(fromInput.value, 10);
         const to = toInput.value.trim() === "" ? void 0 : Number.parseInt(toInput.value, 10);
         if (!Number.isInteger(from) || from < 1 || to !== void 0 && (!Number.isInteger(to) || to < from)) {
-          errorBox.textContent = "Invalid range: “from” must be ≥ 1 and “to” must be ≥ “from”.";
+          errorBox.textContent = t.invalidRange;
           errorBox.style.display = "block";
           return;
         }
@@ -3379,7 +3464,8 @@ ${incoming.content}`,
   }
   function mountButton() {
     const button = document.createElement("button");
-    button.textContent = "Export all chats";
+    button.textContent = t.buttonExport;
+    button.lang = detectLocale();
     Object.assign(button.style, {
       position: "fixed",
       right: "20px",
@@ -3400,7 +3486,7 @@ ${incoming.content}`,
     button.addEventListener("click", async () => {
       const adapter = resolveAdapter();
       if (!adapter) {
-        setStatus("Unsupported page.");
+        setStatus(t.unsupportedPage);
         return;
       }
       const choices = await askChoices(adapter);
@@ -3410,11 +3496,11 @@ ${incoming.content}`,
         await runExport(adapter, setStatus, choices);
       } catch (error) {
         console.error("[ai-chat-exporter]", error);
-        setStatus("Export failed — see console.");
+        setStatus(t.exportFailed);
       } finally {
         setTimeout(() => {
           button.disabled = false;
-          button.textContent = "Export all chats";
+          button.textContent = t.buttonExport;
         }, 4e3);
       }
     });

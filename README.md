@@ -76,6 +76,8 @@ v0.1 ships in two forms with identical behavior (same in-page code, `@ace/app-co
 
 Requests are throttled (500 ms each) so the export never puts pressure on the platform.
 
+The in-page UI (button, dialog, progress and result text) follows your browser/OS language: Chinese environments get Chinese, everything else gets English. No setting to flip — override `window.__ACE_LOCALE__` (`"zh-CN"` / `"en"`) before the script runs if you want to force it.
+
 ## The interchange format
 
 The Schema (`@ace/schema`, defined with Zod as the single source of truth) is the project's "standard". Core entities:
