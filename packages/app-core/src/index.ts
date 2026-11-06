@@ -3,6 +3,7 @@ import { DeepSeekAdapter } from "@ace/adapter-deepseek";
 import { GeminiAdapter } from "@ace/adapter-gemini";
 import { GrokAdapter } from "@ace/adapter-grok";
 import { KimiAdapter } from "@ace/adapter-kimi";
+import { YuanbaoAdapter } from "@ace/adapter-yuanbao";
 import {
   exportConversations,
   type ExportProgress,
@@ -46,6 +47,7 @@ function resolveAdapter(): PlatformAdapter | null {
     new GrokAdapter(),
     new DeepSeekAdapter(),
     new ChatGPTAdapter(),
+    new YuanbaoAdapter(),
   ];
   return adapters.find((adapter) => adapter.detect()) ?? null;
 }

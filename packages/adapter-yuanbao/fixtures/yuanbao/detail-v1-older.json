@@ -1,0 +1,84 @@
+{
+  "id": "00000000-0000-4000-8000-000000000001",
+  "userId": "00000000-0000-4000-8000-0000000000aa",
+  "title": "How do tides form?",
+  "modelId": "gpt_175B_0404",
+  "agentId": "naQivTmsDa",
+  "firstRepliedAt": 1773970500,
+  "lastRepliedAt": 1773970715,
+  "hasMore": false,
+  "convs": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001_2",
+      "conversationId": "00000000-0000-4000-8000-000000000001",
+      "index": 2,
+      "speaker": "ai",
+      "createTime": 1773970600,
+      "speechesV2": [
+        {
+          "traceID": "00000000000000000000000000000002",
+          "speechType": "text",
+          "pluginId": "Adaptive",
+          "chatModelId": "deep_seek_v3",
+          "content": [
+            {
+              "type": "think",
+              "title": "已深度思考（用时16秒）",
+              "iconType": 7,
+              "content": "The user asks about tides, so the Moon's gravity is the key driver."
+            },
+            {
+              "type": "text",
+              "msg": "Tides are caused by the Moon's and Sun's gravitational pull on the ocean.",
+              "redirect": {}
+            },
+            {
+              "type": "searchGuid",
+              "title": "引用 2 篇资料作为参考",
+              "docs": [
+                {
+                  "index": 1,
+                  "title": "Understanding Tides",
+                  "url": "https://example.com/tides",
+                  "sourceType": "thirdparty",
+                  "sourceName": "网页",
+                  "quote": "A primer on spring and neap tides.",
+                  "webSiteName": "example"
+                },
+                {
+                  "index": 2,
+                  "title": "Tidal Forces",
+                  "url": "https://example.com/tidal-forces",
+                  "sourceType": "thirdparty",
+                  "sourceName": "网页",
+                  "quote": "The differential gravitational field across Earth's diameter.",
+                  "webSiteName": "example"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000001_1",
+      "conversationId": "00000000-0000-4000-8000-000000000001",
+      "index": 1,
+      "speaker": "human",
+      "createTime": 1773970500,
+      "speechesV2": [
+        {
+          "speechType": "text",
+          "chatModelId": "hunyuan_gpt_175B_0404",
+          "content": [
+            {
+              "type": "text",
+              "msg": "How do tides form? I attached a chart.",
+              "redirect": {}
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

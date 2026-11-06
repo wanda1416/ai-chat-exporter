@@ -1,0 +1,72 @@
+{
+  "id": "00000000-0000-4000-8000-000000000001",
+  "userId": "00000000-0000-4000-8000-0000000000aa",
+  "title": "How do tides form?",
+  "tempTitle": false,
+  "modelId": "gpt_175B_0404",
+  "agentId": "naQivTmsDa",
+  "chatType": 3,
+  "firstRepliedAt": 1773970500,
+  "lastRepliedAt": 1773970715,
+  "hasMore": true,
+  "multiMediaInfo": [
+    {
+      "type": "txt",
+      "url": "https://hunyuan.tencent.com/api/resource/download?resourceId=00000000000000000000000000000001",
+      "fileName": "tide-notes.txt",
+      "size": 2048,
+      "mediaId": "media-0000-0001"
+    }
+  ],
+  "convs": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001_4",
+      "conversationId": "00000000-0000-4000-8000-000000000001",
+      "index": 4,
+      "speaker": "ai",
+      "createTime": 1773970715,
+      "speechesV2": [
+        {
+          "traceID": "00000000000000000000000000000001",
+          "speechType": "text",
+          "pluginId": "Adaptive",
+          "chatModelId": "hunyuan_gpt_175B_0404",
+          "content": [
+            {
+              "type": "text",
+              "msg": "I saved the summary to a file for you.",
+              "redirect": {}
+            },
+            {
+              "type": "txt",
+              "url": "https://hunyuan.tencent.com/api/resource/download?resourceId=00000000000000000000000000000002",
+              "fileName": "tide-summary.txt",
+              "size": 144304,
+              "mediaId": "media-0000-0002"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000001_3",
+      "conversationId": "00000000-0000-4000-8000-000000000001",
+      "index": 3,
+      "speaker": "human",
+      "createTime": 1773970600,
+      "speechesV2": [
+        {
+          "speechType": "text",
+          "chatModelId": "hunyuan_gpt_175B_0404",
+          "content": [
+            {
+              "type": "text",
+              "msg": "Can you summarise that in three lines?",
+              "redirect": {}
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

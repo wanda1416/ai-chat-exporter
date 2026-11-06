@@ -1,11 +1,11 @@
 // ==UserScript==
-// @name               AI Chat 全部对话导出 / Export All Chats (Kimi, Gemini, Grok, DeepSeek & ChatGPT)
-// @name:zh-CN         AI Chat 全部对话导出（Kimi、Gemini、Grok、DeepSeek & ChatGPT）
+// @name               AI Chat 全部对话导出 / Export All Chats (Kimi, Gemini, Grok, DeepSeek, ChatGPT & Yuanbao)
+// @name:zh-CN         AI Chat 全部对话导出（Kimi、Gemini、Grok、DeepSeek、ChatGPT & 腾讯元宝）
 // @namespace          https://github.com/wanda1416/ai-chat-exporter
 // @version            0.1.2
 // @author             wanda1416
-// @description        Batch-export your Kimi, Gemini, Grok, DeepSeek & ChatGPT conversations to Markdown + JSON, zipped. Pick a range, one click — runs entirely in your browser, no data sent anywhere.
-// @description:zh-CN  一键批量导出 Kimi / Gemini / Grok / DeepSeek / ChatGPT 全部对话为 Markdown + JSON 并打包 zip。支持导出区间选择，纯本地运行，数据不离开浏览器。
+// @description        Batch-export your Kimi, Gemini, Grok, DeepSeek, ChatGPT & Yuanbao conversations to Markdown + JSON, zipped. Pick a range, one click — runs entirely in your browser, no data sent anywhere.
+// @description:zh-CN  一键批量导出 Kimi / Gemini / Grok / DeepSeek / ChatGPT / 腾讯元宝 全部对话为 Markdown + JSON 并打包 zip。支持导出区间选择，纯本地运行，数据不离开浏览器。
 // @license            MIT
 // @homepageURL        https://github.com/wanda1416/ai-chat-exporter
 // @supportURL         https://github.com/wanda1416/ai-chat-exporter/issues
@@ -16,6 +16,7 @@
 // @match              https://grok.com/*
 // @match              https://chat.deepseek.com/*
 // @match              https://chatgpt.com/*
+// @match              https://yuanbao.tencent.com/*
 // @grant              none
 // @run-at             document-idle
 // ==/UserScript==
@@ -28,8 +29,8 @@
   var __defProp = Object.defineProperty;
   var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
   var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
-  const BASE_URL$3 = "https://chatgpt.com";
-  const DEFAULT_PAGE_SIZE$3 = 28;
+  const BASE_URL$4 = "https://chatgpt.com";
+  const DEFAULT_PAGE_SIZE$4 = 28;
   class ChatGPTClient {
     constructor(options = {}) {
       __publicField(this, "fetchImpl");
@@ -37,7 +38,7 @@
       __publicField(this, "explicitToken");
       __publicField(this, "cachedToken");
       this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
-      this.pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE$3;
+      this.pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE$4;
       this.explicitToken = options.token;
     }
     /** Resolves the Bearer token from the override or the session endpoint. */
@@ -45,7 +46,7 @@
       if (this.explicitToken) return this.explicitToken;
       if (this.cachedToken) return this.cachedToken;
       try {
-        const response = await this.fetchImpl(`${BASE_URL$3}/api/auth/session`, {
+        const response = await this.fetchImpl(`${BASE_URL$4}/api/auth/session`, {
           method: "GET",
           credentials: "include",
           headers: { accept: "application/json" }
@@ -62,7 +63,7 @@
       const token = await this.token();
       const headers = { accept: "application/json" };
       if (token) headers.authorization = `Bearer ${token}`;
-      const response = await this.fetchImpl(`${BASE_URL$3}${path}`, {
+      const response = await this.fetchImpl(`${BASE_URL$4}${path}`, {
         method: "GET",
         credentials: "include",
         headers
@@ -110,9 +111,9 @@
       }
     }
   }
-  const PLATFORM$4 = "chatgpt";
+  const PLATFORM$5 = "chatgpt";
   const VISIBLE_CONTENT_TYPES = /* @__PURE__ */ new Set(["text", "multimodal_text"]);
-  function toRole$3(role) {
+  function toRole$4(role) {
     if (role === "assistant" || role === "tool") return "assistant";
     if (role === "system") return "system";
     return "user";
@@ -202,7 +203,7 @@
     if (!content.length) return null;
     const message = {
       id: String(raw.id ?? ""),
-      role: toRole$3((_a2 = raw.author) == null ? void 0 : _a2.role),
+      role: toRole$4((_a2 = raw.author) == null ? void 0 : _a2.role),
       content
     };
     const timestamp = toIso$1(raw.create_time);
@@ -246,13 +247,13 @@
       if (children == null ? void 0 : children.length) m.childrenIds = children;
     }
   }
-  function parseConversationList$3(page) {
+  function parseConversationList$4(page) {
     const metas = [];
     for (const item of page.items ?? []) {
       if (!item.id) continue;
       const meta = {
         id: item.id,
-        platform: PLATFORM$4,
+        platform: PLATFORM$5,
         title: item.title ?? ""
       };
       const createdAt = toIso$1(item.create_time);
@@ -271,7 +272,7 @@
     if (total && next >= total) return void 0;
     return next;
   }
-  function toConversation$4(conversationId, detail, meta) {
+  function toConversation$5(conversationId, detail, meta) {
     var _a2;
     const mapping = detail.mapping ?? {};
     const ordered = activePath$1(mapping, detail.current_node);
@@ -292,7 +293,7 @@
     const conversation = {
       schemaVersion: "1",
       id: conversationId,
-      platform: PLATFORM$4,
+      platform: PLATFORM$5,
       title: detail.title || (meta == null ? void 0 : meta.title) || fallbackTitle,
       messages
     };
@@ -305,10 +306,10 @@
     conversation.sourceUrl = `https://chatgpt.com/c/${conversationId}`;
     return conversation;
   }
-  const MAX_PAGES$4 = 1e3;
+  const MAX_PAGES$5 = 1e3;
   class ChatGPTAdapter {
     constructor(options = {}) {
-      __publicField(this, "platform", PLATFORM$4);
+      __publicField(this, "platform", PLATFORM$5);
       __publicField(this, "client");
       __publicField(this, "metaCache", /* @__PURE__ */ new Map());
       this.client = new ChatGPTClient(options);
@@ -319,9 +320,9 @@
     }
     async *listConversations() {
       let offset = 0;
-      for (let page = 0; page < MAX_PAGES$4; page++) {
+      for (let page = 0; page < MAX_PAGES$5; page++) {
         const data = await this.client.listPage(offset);
-        const metas = parseConversationList$3(data);
+        const metas = parseConversationList$4(data);
         for (const meta of metas) {
           this.metaCache.set(meta.id, meta);
           yield meta;
@@ -334,7 +335,7 @@
     async fetchConversation(id) {
       const data = await this.client.conversationDetail(id);
       const meta = this.metaCache.get(id);
-      return toConversation$4(id, data, {
+      return toConversation$5(id, data, {
         title: meta == null ? void 0 : meta.title,
         createdAt: meta == null ? void 0 : meta.createdAt,
         updatedAt: meta == null ? void 0 : meta.updatedAt
@@ -349,15 +350,15 @@
       return this.client.downloadFile(attachment.id);
     }
   }
-  const BASE_URL$2 = "https://chat.deepseek.com/api/v0/";
-  const DEFAULT_PAGE_SIZE$2 = 100;
+  const BASE_URL$3 = "https://chat.deepseek.com/api/v0/";
+  const DEFAULT_PAGE_SIZE$3 = 100;
   class DeepSeekClient {
     constructor(options = {}) {
       __publicField(this, "fetchImpl");
       __publicField(this, "pageSize");
       __publicField(this, "explicitToken");
       this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
-      this.pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE$2;
+      this.pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE$3;
       this.explicitToken = options.token;
     }
     /** Resolves the Bearer token from the override or localStorage. */
@@ -378,7 +379,7 @@
       const token = this.token();
       const headers = { accept: "application/json" };
       if (token) headers.authorization = `Bearer ${token}`;
-      const response = await this.fetchImpl(`${BASE_URL$2}${path}`, {
+      const response = await this.fetchImpl(`${BASE_URL$3}${path}`, {
         method: "GET",
         credentials: "include",
         headers
@@ -404,8 +405,8 @@
       return this.get(`chat/history_messages?${params.toString()}`);
     }
   }
-  const PLATFORM$3 = "deepseek";
-  function toRole$2(role) {
+  const PLATFORM$4 = "deepseek";
+  function toRole$3(role) {
     const r = (role ?? "").toLowerCase();
     if (r === "assistant") return "assistant";
     if (r === "system") return "system";
@@ -446,7 +447,7 @@
     const id = String(raw.message_id ?? "");
     const message = {
       id,
-      role: toRole$2(raw.role),
+      role: toRole$3(raw.role),
       content: raw.content ? [{ type: "text", text: raw.content }] : []
     };
     const timestamp = toIso(raw.inserted_at);
@@ -501,13 +502,13 @@
       if (children == null ? void 0 : children.length) m.childrenIds = children;
     }
   }
-  function parseConversationList$2(data) {
+  function parseConversationList$3(data) {
     const metas = [];
     for (const session of data.chat_sessions ?? []) {
       if (!session.id) continue;
       const meta = {
         id: session.id,
-        platform: PLATFORM$3,
+        platform: PLATFORM$4,
         title: session.title ?? ""
       };
       const createdAt = toIso(session.inserted_at);
@@ -527,7 +528,7 @@
     if (!(sessions == null ? void 0 : sessions.length)) return void 0;
     return (_a2 = sessions[sessions.length - 1]) == null ? void 0 : _a2.seq_id;
   }
-  function toConversation$3(conversationId, data, meta) {
+  function toConversation$4(conversationId, data, meta) {
     var _a2;
     const session = data.chat_session ?? {};
     const ordered = activePath(data.chat_messages ?? [], session.current_message_id);
@@ -549,7 +550,7 @@
     const conversation = {
       schemaVersion: "1",
       id: conversationId,
-      platform: PLATFORM$3,
+      platform: PLATFORM$4,
       title: session.title || (meta == null ? void 0 : meta.title) || fallbackTitle,
       messages
     };
@@ -561,10 +562,10 @@
     conversation.sourceUrl = `https://chat.deepseek.com/a/chat/s/${conversationId}`;
     return conversation;
   }
-  const MAX_PAGES$3 = 1e3;
+  const MAX_PAGES$4 = 1e3;
   class DeepSeekAdapter {
     constructor(options = {}) {
-      __publicField(this, "platform", PLATFORM$3);
+      __publicField(this, "platform", PLATFORM$4);
       __publicField(this, "client");
       __publicField(this, "metaCache", /* @__PURE__ */ new Map());
       this.client = new DeepSeekClient(options);
@@ -575,9 +576,9 @@
     }
     async *listConversations() {
       let beforeSeqId;
-      for (let page = 0; page < MAX_PAGES$3; page++) {
+      for (let page = 0; page < MAX_PAGES$4; page++) {
         const data = await this.client.fetchPage(beforeSeqId);
-        const metas = parseConversationList$2(data);
+        const metas = parseConversationList$3(data);
         for (const meta of metas) {
           this.metaCache.set(meta.id, meta);
           yield meta;
@@ -591,14 +592,14 @@
     async fetchConversation(id) {
       const data = await this.client.historyMessages(id);
       const meta = this.metaCache.get(id);
-      return toConversation$3(id, data, {
+      return toConversation$4(id, data, {
         title: meta == null ? void 0 : meta.title,
         createdAt: meta == null ? void 0 : meta.createdAt,
         updatedAt: meta == null ? void 0 : meta.updatedAt
       });
     }
   }
-  const PLATFORM$2 = "gemini";
+  const PLATFORM$3 = "gemini";
   const asArray = (v) => Array.isArray(v) ? v : [];
   const asString = (v) => typeof v === "string" && v.length > 0 ? v : void 0;
   const at = (v, i) => Array.isArray(v) ? v[i] : void 0;
@@ -637,7 +638,7 @@
     }
     throw new Error(`Gemini batchexecute response had no "${rpcid}" payload.`);
   }
-  function parseConversationList$1(payload) {
+  function parseConversationList$2(payload) {
     const items = asArray(at(payload, 2));
     const metas = [];
     for (const item of items) {
@@ -645,7 +646,7 @@
       if (!id) continue;
       const meta = {
         id,
-        platform: PLATFORM$2,
+        platform: PLATFORM$3,
         title: asString(at(item, 1)) ?? ""
       };
       const createdAt = isoFromTuple(at(item, 5));
@@ -704,7 +705,7 @@
     }
     return messages;
   }
-  function toConversation$2(conversationId, payload, title) {
+  function toConversation$3(conversationId, payload, title) {
     var _a2, _b2, _c;
     const turns = [...detailTurns(payload)].sort((a, b) => {
       const ta = turnTime(a);
@@ -719,7 +720,7 @@
     const conversation = {
       schemaVersion: "1",
       id: conversationId,
-      platform: PLATFORM$2,
+      platform: PLATFORM$3,
       title: title ?? derivedTitle,
       messages
     };
@@ -803,10 +804,10 @@
       return this.call(RPC_DETAIL, [cid, DETAIL_PAGE_SIZE, pageToken ?? null, 1, [0], [4], null, 1]);
     }
   }
-  const MAX_PAGES$2 = 1e3;
+  const MAX_PAGES$3 = 1e3;
   class GeminiAdapter {
     constructor(options = {}) {
-      __publicField(this, "platform", PLATFORM$2);
+      __publicField(this, "platform", PLATFORM$3);
       __publicField(this, "client");
       __publicField(this, "titles", /* @__PURE__ */ new Map());
       this.client = new GeminiClient(options);
@@ -817,9 +818,9 @@
     }
     async *listConversations() {
       let pageToken;
-      for (let page = 0; page < MAX_PAGES$2; page++) {
+      for (let page = 0; page < MAX_PAGES$3; page++) {
         const payload = await this.client.listConversations(pageToken);
-        const metas = parseConversationList$1(payload);
+        const metas = parseConversationList$2(payload);
         for (const meta of metas) {
           this.titles.set(meta.id, meta.title);
           yield meta;
@@ -832,7 +833,7 @@
       const allTurns = [];
       const seen = /* @__PURE__ */ new Set();
       let pageToken;
-      for (let page = 0; page < MAX_PAGES$2; page++) {
+      for (let page = 0; page < MAX_PAGES$3; page++) {
         const payload = await this.client.getConversation(id, pageToken);
         const turns = detailTurns(payload);
         for (const turn of turns) {
@@ -845,20 +846,20 @@
         if (!pageToken || turns.length === 0) break;
       }
       const combined = [allTurns, null, null, []];
-      return toConversation$2(id, combined, this.titles.get(id));
+      return toConversation$3(id, combined, this.titles.get(id));
     }
   }
-  const BASE_URL$1 = "https://grok.com/rest/";
-  const DEFAULT_PAGE_SIZE$1 = 30;
+  const BASE_URL$2 = "https://grok.com/rest/";
+  const DEFAULT_PAGE_SIZE$2 = 30;
   class GrokClient {
     constructor(options = {}) {
       __publicField(this, "fetchImpl");
       __publicField(this, "pageSize");
       this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
-      this.pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE$1;
+      this.pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE$2;
     }
     async get(path) {
-      const response = await this.fetchImpl(`${BASE_URL$1}${path}`, {
+      const response = await this.fetchImpl(`${BASE_URL$2}${path}`, {
         method: "GET",
         credentials: "include",
         headers: { accept: "application/json" }
@@ -869,7 +870,7 @@
       return await response.json();
     }
     async post(path, body) {
-      const response = await this.fetchImpl(`${BASE_URL$1}${path}`, {
+      const response = await this.fetchImpl(`${BASE_URL$2}${path}`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json", accept: "application/json" },
@@ -900,8 +901,8 @@
       );
     }
   }
-  const PLATFORM$1 = "grok";
-  function toRole$1(sender) {
+  const PLATFORM$2 = "grok";
+  function toRole$2(sender) {
     return (sender ?? "").toLowerCase() === "assistant" ? "assistant" : "user";
   }
   function parseCitations(results) {
@@ -936,7 +937,7 @@
     const id = raw.responseId ?? "";
     const message = {
       id,
-      role: toRole$1(raw.sender),
+      role: toRole$2(raw.sender),
       content: raw.message ? [{ type: "text", text: raw.message }] : []
     };
     if (raw.createTime) message.timestamp = raw.createTime;
@@ -972,13 +973,13 @@
       if (children == null ? void 0 : children.length) m.childrenIds = children;
     }
   }
-  function parseConversationList(response) {
+  function parseConversationList$1(response) {
     const metas = [];
     for (const conv of response.conversations ?? []) {
       if (!conv.conversationId) continue;
       const meta = {
         id: conv.conversationId,
-        platform: PLATFORM$1,
+        platform: PLATFORM$2,
         title: conv.title ?? ""
       };
       if (conv.createTime) meta.createdAt = conv.createTime;
@@ -990,7 +991,7 @@
   function nextPageToken(response) {
     return response.nextPageToken || void 0;
   }
-  function toConversation$1(conversationId, nodes, loaded, meta) {
+  function toConversation$2(conversationId, nodes, loaded, meta) {
     var _a2, _b2;
     const byId = /* @__PURE__ */ new Map();
     for (const r of loaded.responses ?? []) {
@@ -1031,7 +1032,7 @@
     const conversation = {
       schemaVersion: "1",
       id: conversationId,
-      platform: PLATFORM$1,
+      platform: PLATFORM$2,
       title: (meta == null ? void 0 : meta.title) || fallbackTitle,
       messages
     };
@@ -1042,10 +1043,10 @@
     conversation.sourceUrl = `https://grok.com/c/${conversationId}`;
     return conversation;
   }
-  const MAX_PAGES$1 = 1e3;
+  const MAX_PAGES$2 = 1e3;
   class GrokAdapter {
     constructor(options = {}) {
-      __publicField(this, "platform", PLATFORM$1);
+      __publicField(this, "platform", PLATFORM$2);
       __publicField(this, "client");
       __publicField(this, "metaCache", /* @__PURE__ */ new Map());
       this.client = new GrokClient(options);
@@ -1056,9 +1057,9 @@
     }
     async *listConversations() {
       let pageToken;
-      for (let page = 0; page < MAX_PAGES$1; page++) {
+      for (let page = 0; page < MAX_PAGES$2; page++) {
         const response = await this.client.listConversations(pageToken);
-        const metas = parseConversationList(response);
+        const metas = parseConversationList$1(response);
         for (const meta of metas) {
           this.metaCache.set(meta.id, meta);
           yield meta;
@@ -1072,14 +1073,14 @@
       const responseIds = (nodes.responseNodes ?? []).map((n) => n.responseId).filter((rid) => Boolean(rid));
       const loaded = responseIds.length ? await this.client.loadResponses(id, responseIds) : { responses: [] };
       const meta = this.metaCache.get(id);
-      return toConversation$1(id, nodes, loaded, {
+      return toConversation$2(id, nodes, loaded, {
         title: meta == null ? void 0 : meta.title,
         createdAt: meta == null ? void 0 : meta.createdAt,
         updatedAt: meta == null ? void 0 : meta.updatedAt
       });
     }
   }
-  const BASE_URL = "https://www.kimi.com/apiv2/";
+  const BASE_URL$1 = "https://www.kimi.com/apiv2/";
   const FEED_SERVICE = "kimi.gateway.feed.v1.FeedService";
   const CHAT_SERVICE = "kimi.gateway.chat.v1.ChatService";
   class KimiClient {
@@ -1102,7 +1103,7 @@
       return token;
     }
     async call(service, method, body) {
-      const response = await this.fetchImpl(`${BASE_URL}${service}/${method}`, {
+      const response = await this.fetchImpl(`${BASE_URL$1}${service}/${method}`, {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -1127,8 +1128,8 @@
       return this.call(CHAT_SERVICE, "ListMessages", { chat_id: chatId });
     }
   }
-  const PLATFORM = "kimi";
-  function toRole(raw) {
+  const PLATFORM$1 = "kimi";
+  function toRole$1(raw) {
     const v = (raw ?? "").toLowerCase();
     if (v.includes("assistant")) return "assistant";
     if (v.includes("system")) return "system";
@@ -1178,7 +1179,7 @@
     const citations = parseReferences(raw.references);
     const message = {
       id: raw.id ?? "",
-      role: toRole(raw.role),
+      role: toRole$1(raw.role),
       content
     };
     if (raw.createTime) message.timestamp = raw.createTime;
@@ -1230,14 +1231,14 @@
     for (const item of response.items ?? []) {
       const chat = item.chat;
       if (!(chat == null ? void 0 : chat.id)) continue;
-      const meta = { id: chat.id, platform: PLATFORM, title: chat.name ?? "" };
+      const meta = { id: chat.id, platform: PLATFORM$1, title: chat.name ?? "" };
       if (chat.createTime) meta.createdAt = chat.createTime;
       if (chat.updateTime) meta.updatedAt = chat.updateTime;
       metas.push(meta);
     }
     return metas;
   }
-  function toConversation(chatId, chat, messages) {
+  function toConversation$1(chatId, chat, messages) {
     const summary = chat.chat ?? {};
     const attachments = parseAttachments(chat);
     const parsedMessages = (messages.messages ?? []).map(parseMessage);
@@ -1246,7 +1247,7 @@
     const conversation = {
       schemaVersion: "1",
       id: summary.id ?? chatId,
-      platform: PLATFORM,
+      platform: PLATFORM$1,
       title: summary.name ?? "",
       messages: parsedMessages
     };
@@ -1256,11 +1257,11 @@
     conversation.sourceUrl = `https://www.kimi.com/chat/${conversation.id}`;
     return conversation;
   }
-  const DEFAULT_PAGE_SIZE = 30;
-  const MAX_PAGES = 1e3;
+  const DEFAULT_PAGE_SIZE$1 = 30;
+  const MAX_PAGES$1 = 1e3;
   class KimiAdapter {
     constructor(options = {}) {
-      __publicField(this, "platform", PLATFORM);
+      __publicField(this, "platform", PLATFORM$1);
       __publicField(this, "client");
       this.client = new KimiClient(options);
     }
@@ -1270,9 +1271,9 @@
     }
     async *listConversations() {
       let pageToken;
-      for (let page = 0; page < MAX_PAGES; page++) {
+      for (let page = 0; page < MAX_PAGES$1; page++) {
         const response = await this.client.listFeeds({
-          page_size: DEFAULT_PAGE_SIZE,
+          page_size: DEFAULT_PAGE_SIZE$1,
           filter_types: ["FEED_TYPE_CHAT", "FEED_TYPE_TASK"],
           include_pinned: true,
           ...pageToken ? { page_token: pageToken } : {}
@@ -1288,7 +1289,347 @@
         this.client.getChat(id),
         this.client.listMessages(id)
       ]);
-      return toConversation(id, chat, messages);
+      return toConversation$1(id, chat, messages);
+    }
+  }
+  const BASE_URL = "https://yuanbao.tencent.com";
+  const DEFAULT_PAGE_SIZE = 20;
+  const DEFAULT_DETAIL_LIMIT = 50;
+  class YuanbaoClient {
+    constructor(options = {}) {
+      __publicField(this, "fetchImpl");
+      __publicField(this, "pageSize");
+      __publicField(this, "detailLimit");
+      this.fetchImpl = options.fetchImpl ?? globalThis.fetch.bind(globalThis);
+      this.pageSize = options.pageSize ?? DEFAULT_PAGE_SIZE;
+      this.detailLimit = options.detailLimit ?? DEFAULT_DETAIL_LIMIT;
+    }
+    async post(path, body) {
+      const response = await this.fetchImpl(`${BASE_URL}${path}`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json", accept: "application/json" },
+        body: JSON.stringify(body ?? {})
+      });
+      if (!response.ok) {
+        throw new Error(`Yuanbao POST ${path} failed: ${response.status} ${response.statusText}`);
+      }
+      return await response.json();
+    }
+    /**
+     * One page of the sidebar history, newest first. `lastRepliedAt` is the
+     * cursor: 0 starts from the newest conversation, otherwise pass the smallest
+     * `lastRepliedAt` of the previous page.
+     */
+    listConversations(agentId, lastRepliedAt = 0) {
+      return this.post("/api/user/agent/conversation/v3/list", {
+        agent_id: agentId,
+        page_size: this.pageSize,
+        action: 1,
+        last_replied_at: lastRepliedAt,
+        top_time: 0
+      });
+    }
+    /**
+     * One window of turns. `offset: 0` returns the newest `limit` turns; any
+     * other `offset` returns the turns older than that index (verified semantics:
+     * offset=4 → turns with index < 4), which is how long threads are walked.
+     */
+    conversationDetail(conversationId, agentId, offset = 0) {
+      return this.post("/api/user/agent/conversation/v1/detail", {
+        conversationId,
+        offset,
+        limit: this.detailLimit,
+        agentId
+      });
+    }
+  }
+  const PLATFORM = "yuanbao";
+  const DEFAULT_AGENT_ID = "naQivTmsDa";
+  function agentIdFromPath(pathname) {
+    const segments = pathname.split("/").filter(Boolean);
+    if (segments[0] !== "chat") return void 0;
+    return segments.length > 1 ? segments[1] : void 0;
+  }
+  function toIsoTime(value) {
+    if (value === void 0 || value === null) return void 0;
+    const numeric = typeof value === "string" ? Number(value) : value;
+    if (!Number.isFinite(numeric) || numeric <= 0) return void 0;
+    const ms = numeric < 1e12 ? numeric * 1e3 : numeric;
+    const date = new Date(ms);
+    return Number.isNaN(date.getTime()) ? void 0 : date.toISOString();
+  }
+  function toRole(speaker) {
+    switch ((speaker ?? "").toLowerCase()) {
+      case "ai":
+      case "assistant":
+      case "bot":
+        return "assistant";
+      case "system":
+        return "system";
+      default:
+        return "user";
+    }
+  }
+  function guessMimeType(tag, fileName) {
+    const t = (tag ?? "").toLowerCase();
+    if (t === "txt" || t === "text") return "text/plain";
+    if (t === "pdf") return "application/pdf";
+    if (/\.(png|jpe?g|webp|gif|bmp)$/i.test(fileName ?? "")) return "image/*";
+    return void 0;
+  }
+  function isFileBlock(type) {
+    return type === "txt" || type === "pdf" || type === "file" || type === "doc" || type === "excel" || type === "ppt";
+  }
+  function mediaToAttachment(media, fallbackId) {
+    const id = media.mediaId || media.fileName || fallbackId;
+    const attachment = { id };
+    if (media.fileName) attachment.name = media.fileName;
+    const mimeType = guessMimeType(media.type, media.fileName);
+    if (mimeType) attachment.mimeType = mimeType;
+    if (typeof media.size === "number" && Number.isFinite(media.size)) {
+      attachment.sizeBytes = media.size;
+    }
+    if (media.url) attachment.url = media.url;
+    return attachment;
+  }
+  function mapBlock(block, messageId, index) {
+    const contribution = { parts: [], citations: [], attachments: [] };
+    const type = (block.type ?? "").toLowerCase();
+    if (type === "think") {
+      const content = block.content ?? "";
+      if (content) {
+        contribution.reasoning = { content };
+        if (block.title) contribution.reasoning.summary = block.title;
+      }
+      return contribution;
+    }
+    if (type === "searchguid") {
+      for (const doc of block.docs ?? []) {
+        const citation = {};
+        if (doc.title) citation.title = doc.title;
+        if (doc.url) citation.url = doc.url;
+        if (doc.quote) citation.snippet = doc.quote;
+        if (citation.title || citation.url) contribution.citations.push(citation);
+      }
+      return contribution;
+    }
+    if (type === "image") {
+      const attachment = mediaToAttachment(
+        { type: "image", url: block.url, fileName: block.fileName, mediaId: block.mediaId },
+        `${messageId}-image-${index}`
+      );
+      contribution.attachments.push(attachment);
+      contribution.parts.push({
+        type: "image",
+        attachmentId: attachment.id,
+        ...block.url ? { url: block.url } : {},
+        ...block.fileName ? { alt: block.fileName } : {}
+      });
+      return contribution;
+    }
+    if (isFileBlock(type)) {
+      const attachment = mediaToAttachment(block, `${messageId}-file-${index}`);
+      contribution.attachments.push(attachment);
+      const part = { type: "file", attachmentId: attachment.id };
+      if (attachment.name) part.name = attachment.name;
+      contribution.parts.push(part);
+      return contribution;
+    }
+    const text = block.msg ?? block.content ?? "";
+    if (text) contribution.parts.push({ type: "text", text });
+    return contribution;
+  }
+  function mergeReasoning(target, incoming) {
+    if (!target) return incoming;
+    return {
+      content: `${target.content}
+
+${incoming.content}`,
+      ...target.summary ?? incoming.summary ? { summary: target.summary ?? incoming.summary } : {}
+    };
+  }
+  function toMessage(turn, conversationId) {
+    const messageId = turn.id ?? `${conversationId}_${turn.index ?? 0}`;
+    const content = [];
+    const citations = [];
+    const attachments = [];
+    let reasoning;
+    let model;
+    const speeches = turn.speechesV2 ?? [];
+    for (const speech of speeches) {
+      if (speech.chatModelId) model = speech.chatModelId;
+      const blocks = speech.content ?? [];
+      for (const [index, block] of blocks.entries()) {
+        const contribution = mapBlock(block, messageId, index);
+        content.push(...contribution.parts);
+        citations.push(...contribution.citations);
+        attachments.push(...contribution.attachments);
+        if (contribution.reasoning) reasoning = mergeReasoning(reasoning, contribution.reasoning);
+      }
+    }
+    for (const media of turn.multiMediaInfo ?? []) {
+      const attachment = mediaToAttachment(media, `${messageId}-media-${attachments.length}`);
+      attachments.push(attachment);
+      const part = { type: "file", attachmentId: attachment.id };
+      if (attachment.name) part.name = attachment.name;
+      content.push(part);
+    }
+    const message = { id: messageId, role: toRole(turn.speaker), content };
+    const timestamp = toIsoTime(turn.createTime);
+    if (timestamp) message.timestamp = timestamp;
+    if (model && message.role === "assistant") message.model = model;
+    if (reasoning) message.reasoning = reasoning;
+    if (citations.length) message.citations = citations;
+    if (attachments.length) message.attachments = attachments.map((a) => a.id);
+    return { message, attachments };
+  }
+  function orderedTurns(turns) {
+    const byKey = /* @__PURE__ */ new Map();
+    for (const [position, turn] of turns.entries()) {
+      const key = turn.id ?? `#${turn.index ?? position}`;
+      if (!byKey.has(key)) byKey.set(key, turn);
+    }
+    return [...byKey.values()].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+  }
+  function nextListCursor(response) {
+    var _a2;
+    const items = ((_a2 = response.data) == null ? void 0 : _a2.list) ?? [];
+    if (!items.length) return void 0;
+    const times = items.map((item) => item.lastRepliedAt).filter((value) => typeof value === "number" && value > 0);
+    return times.length ? Math.min(...times) : void 0;
+  }
+  function parseConversationList(response) {
+    var _a2;
+    const metas = [];
+    for (const item of ((_a2 = response.data) == null ? void 0 : _a2.list) ?? []) {
+      if (!item.id) continue;
+      const meta = { id: item.id, platform: PLATFORM, title: item.title ?? "" };
+      const createdAt = toIsoTime(item.firstRepliedAt);
+      const updatedAt = toIsoTime(item.lastRepliedAt);
+      if (createdAt) meta.createdAt = createdAt;
+      if (updatedAt) meta.updatedAt = updatedAt;
+      metas.push(meta);
+    }
+    return metas;
+  }
+  function toConversation(pages, meta) {
+    var _a2, _b2, _c, _d;
+    const first = pages[0] ?? {};
+    const conversationId = (meta == null ? void 0 : meta.id) ?? first.id ?? "";
+    const agentId = (meta == null ? void 0 : meta.agentId) ?? first.agentId ?? DEFAULT_AGENT_ID;
+    const turns = orderedTurns(pages.flatMap((page) => page.convs ?? []));
+    const messages = [];
+    const attachments = [];
+    const seenAttachment = /* @__PURE__ */ new Set();
+    for (const turn of turns) {
+      const parsed = toMessage(turn, conversationId);
+      messages.push(parsed.message);
+      for (const attachment of parsed.attachments) {
+        if (seenAttachment.has(attachment.id)) continue;
+        seenAttachment.add(attachment.id);
+        attachments.push(attachment);
+      }
+    }
+    for (const page of pages) {
+      for (const media of page.multiMediaInfo ?? []) {
+        const attachment = mediaToAttachment(media, `media-${attachments.length}`);
+        if (seenAttachment.has(attachment.id)) continue;
+        seenAttachment.add(attachment.id);
+        attachments.push(attachment);
+      }
+    }
+    const firstUserText = (_a2 = messages.find((message) => message.role === "user")) == null ? void 0 : _a2.content.find((part) => part.type === "text");
+    const fallbackTitle = (firstUserText == null ? void 0 : firstUserText.type) === "text" ? firstUserText.text.replace(/\s+/g, " ").slice(0, 80) : "";
+    const model = ((_b2 = [...messages].reverse().find((message) => message.model)) == null ? void 0 : _b2.model) ?? first.modelId;
+    const conversation = {
+      schemaVersion: "1",
+      id: conversationId,
+      platform: PLATFORM,
+      title: (meta == null ? void 0 : meta.title) || first.title || fallbackTitle,
+      messages
+    };
+    const createdAt = earliestTime(meta == null ? void 0 : meta.createdAt, pages) ?? toIsoTime(first.firstRepliedAt) ?? ((_c = messages.find((m) => m.timestamp)) == null ? void 0 : _c.timestamp);
+    const updatedAt = (meta == null ? void 0 : meta.updatedAt) ?? toIsoTime(first.lastRepliedAt) ?? ((_d = [...messages].reverse().find((m) => m.timestamp)) == null ? void 0 : _d.timestamp);
+    if (createdAt) conversation.createdAt = createdAt;
+    if (updatedAt) conversation.updatedAt = updatedAt;
+    if (model) conversation.model = model;
+    if (attachments.length) conversation.attachments = attachments;
+    conversation.sourceUrl = `https://yuanbao.tencent.com/chat/${agentId}/${conversationId}`;
+    return conversation;
+  }
+  function earliestTime(fromMeta, pages) {
+    if (fromMeta) return fromMeta;
+    const times = pages.map((page) => toIsoTime(page.firstRepliedAt)).filter((value) => Boolean(value)).sort();
+    return times[0];
+  }
+  const MAX_PAGES = 500;
+  const MAX_DETAIL_PAGES = 50;
+  class YuanbaoAdapter {
+    constructor(options = {}) {
+      __publicField(this, "platform", PLATFORM);
+      __publicField(this, "client");
+      __publicField(this, "explicitAgentId");
+      __publicField(this, "metaCache", /* @__PURE__ */ new Map());
+      this.client = new YuanbaoClient(options);
+      this.explicitAgentId = options.agentId;
+    }
+    detect() {
+      if (typeof location === "undefined") return false;
+      return /(^|\.)yuanbao\.tencent\.com$/.test(location.hostname);
+    }
+    /** The agent whose history is exported: explicit → URL → the default agent. */
+    agentId() {
+      if (this.explicitAgentId) return this.explicitAgentId;
+      if (typeof location !== "undefined") {
+        const fromUrl = agentIdFromPath(location.pathname);
+        if (fromUrl) return fromUrl;
+      }
+      return DEFAULT_AGENT_ID;
+    }
+    async *listConversations() {
+      const agentId = this.agentId();
+      const seen = /* @__PURE__ */ new Set();
+      let cursor = 0;
+      for (let page = 0; page < MAX_PAGES; page++) {
+        const response = await this.client.listConversations(agentId, cursor);
+        const metas = parseConversationList(response);
+        if (!metas.length) break;
+        for (const meta of metas) {
+          if (seen.has(meta.id)) continue;
+          seen.add(meta.id);
+          this.metaCache.set(meta.id, meta);
+          yield meta;
+        }
+        const next = nextListCursor(response);
+        if (next === void 0 || next <= 0) break;
+        if (cursor !== 0 && next >= cursor) break;
+        cursor = next;
+      }
+    }
+    async fetchConversation(id) {
+      const agentId = this.agentId();
+      const pages = [];
+      let offset = 0;
+      for (let page = 0; page < MAX_DETAIL_PAGES; page++) {
+        const detail = await this.client.conversationDetail(id, agentId, offset);
+        pages.push(detail);
+        const turns = detail.convs ?? [];
+        if (!detail.hasMore || !turns.length) break;
+        const oldestIndex = Math.min(
+          ...turns.map((turn) => turn.index ?? Number.POSITIVE_INFINITY)
+        );
+        if (!Number.isFinite(oldestIndex) || oldestIndex <= 0 || oldestIndex <= offset) break;
+        offset = oldestIndex;
+      }
+      const meta = this.metaCache.get(id);
+      return toConversation(pages, {
+        id,
+        agentId,
+        ...(meta == null ? void 0 : meta.title) !== void 0 ? { title: meta.title } : {},
+        ...(meta == null ? void 0 : meta.createdAt) !== void 0 ? { createdAt: meta.createdAt } : {},
+        ...(meta == null ? void 0 : meta.updatedAt) !== void 0 ? { updatedAt: meta.updatedAt } : {}
+      });
     }
   }
   function slugify(input, fallback = "untitled") {
@@ -2528,7 +2869,8 @@
       new GeminiAdapter(),
       new GrokAdapter(),
       new DeepSeekAdapter(),
-      new ChatGPTAdapter()
+      new ChatGPTAdapter(),
+      new YuanbaoAdapter()
     ];
     return adapters.find((adapter) => adapter.detect()) ?? null;
   }

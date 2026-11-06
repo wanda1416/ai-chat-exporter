@@ -1,0 +1,47 @@
+{
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "total_count": 3,
+    "timestamp": 1793984915,
+    "etag": "00000000000000000000000000000000",
+    "list": [
+      {
+        "id": "00000000-0000-4000-8000-000000000001",
+        "title": "How do tides form?",
+        "userId": "00000000-0000-4000-8000-0000000000aa",
+        "firstRepliedAt": 1773970500,
+        "lastRepliedAt": 1773970715,
+        "chatModelId": "hunyuan_gpt_175B_0404",
+        "agentId": "naQivTmsDa",
+        "maxIndex": 4,
+        "hasMore": false,
+        "sessionTitle": "新对话"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000002",
+        "title": "Quicksort in Rust",
+        "userId": "00000000-0000-4000-8000-0000000000aa",
+        "firstRepliedAt": 1770869600,
+        "lastRepliedAt": 1770869978,
+        "chatModelId": "deep_seek_v3",
+        "agentId": "naQivTmsDa",
+        "maxIndex": 2,
+        "hasMore": false,
+        "sessionTitle": "新对话"
+      },
+      {
+        "id": "00000000-0000-4000-8000-000000000003",
+        "title": "Why do towels stiffen?",
+        "userId": "00000000-0000-4000-8000-0000000000aa",
+        "firstRepliedAt": 1770321500,
+        "lastRepliedAt": 1770321588,
+        "chatModelId": "hunyuan_gpt_175B_0404",
+        "agentId": "naQivTmsDa",
+        "maxIndex": 2,
+        "hasMore": false,
+        "sessionTitle": "新对话"
+      }
+    ]
+  }
+}

@@ -86,6 +86,15 @@ importers:
         specifier: workspace:*
         version: link:../schema
 
+  packages/adapter-yuanbao:
+    dependencies:
+      '@ace/core':
+        specifier: workspace:*
+        version: link:../core
+      '@ace/schema':
+        specifier: workspace:*
+        version: link:../schema
+
   packages/app-core:
     dependencies:
       '@ace/adapter-chatgpt':
@@ -103,6 +112,9 @@ importers:
       '@ace/adapter-kimi':
         specifier: workspace:*
         version: link:../adapter-kimi
+      '@ace/adapter-yuanbao':
+        specifier: workspace:*
+        version: link:../adapter-yuanbao
       '@ace/core':
         specifier: workspace:*
         version: link:../core

@@ -16,6 +16,7 @@
     "@ace/adapter-gemini": "workspace:*",
     "@ace/adapter-grok": "workspace:*",
     "@ace/adapter-kimi": "workspace:*",
+    "@ace/adapter-yuanbao": "workspace:*",
     "@ace/core": "workspace:*",
     "@ace/exporter-json": "workspace:*",
     "@ace/exporter-markdown": "workspace:*",

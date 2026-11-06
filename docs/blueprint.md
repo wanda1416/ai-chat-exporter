@@ -269,6 +269,38 @@ interface PlatformAdapter {
 
 **通用性结论**：第五个平台在 token 来源（`/api/auth/session`）、分页（offset/limit）、数据模型（含 system/tool/image 多类节点的 mapping 树 + 图像由 tool 节点承载）上又是一组新组合，仍映射到**同一份 Schema v1**、复用**同一套接口与管道**，`schema`/`core` 零改动。由 `packages/adapter-chatgpt` + `fixtures/chatgpt/` 快照测试固化，并经真实账号 dogfood 验证（图像丢失 bug 即在此阶段被发现并修复）。
 
+## 14. 腾讯元宝适配器：真实 API 发现（第六个适配器）
+
+> 2026-11 通过 Kimi WebBridge 在用户已登录的真实浏览器里被动录制（录制脚本 `tools/yuanbao-capture.js`），随后直接在页面上下文执行适配器本体做 dogfood：列表 9 条会话、详情逐条拉取、思考链/联网引用/文件附件三类映射全部实测通过（`Conversation.parse` 校验通过）。这是第六种「极端」——**强风控的 Cookie-only POST 接口 + 轮次数组而非消息树**。
+
+**基址与协议**：`https://yuanbao.tencent.com`，全部 POST + JSON，同源。列表/详情之外还有 `updateModel`、`model/list`、`getRunningConversations` 等噪音端点，导出只用两个。
+
+**认证（关键）**：**纯 Cookie**（`hy_token` + 腾讯 `uin` 系列），**无需 Bearer、无需 XSRF/CSRF 头**——同源 `fetch(..., {credentials:"include"})` 直接可用（实测 200）。这是本项目里最"省事"的鉴权形态，代价是平台反爬只看请求量。
+
+**两个端点**：
+
+- **列表**：`POST /api/user/agent/conversation/v3/list`，body `{agent_id, page_size, action:1, last_replied_at:0, top_time:0}` → `{code, message, data:{total_count, timestamp, list:[{id, title, firstRepliedAt, lastRepliedAt, chatModelId, agentId, maxIndex, ...}]}}`。**游标分页**：下一页把本页最小的 `lastRepliedAt` 塞回 `last_replied_at`（实测第 2 页正确返回更早的 1 条），游标不递减即终止。
+- **详情**：`POST /api/user/agent/conversation/v1/detail`，body `{conversationId, offset, limit, agentId}` → **裸对象**（无信封）`{id, title, convs[], hasMore, firstRepliedAt, lastRepliedAt, modelId, multiMediaInfo}`。`limit` 实测可给 100（一次取完），前端默认 14。
+
+**`offset` 语义（最反直觉、必须实测的一点）**：它**不是**"跳过 N 条"。offset=0 表示"最新一页"；offset=N 表示"返回 index < N 的最近 limit 条"。扫描验证（6 轮会话，limit=3）：offset=0→[6,5,4]、offset=3→[2,1]、offset=4→[3,2,1]、offset=5→[4,3,2]。因此长会话续拉的正确写法是 `offset = 本页最小 index`，`hasMore` 为假即到底——`packages/adapter-yuanbao/src/adapter.ts` 即按此循环。
+
+**解析要点（直接决定实现）**：
+
+- **数据结构是"轮次数组"而非消息树**：`convs[]` 每项 = 一个说话人的一轮（`index` 1-based、`speaker: "human"|"ai"`、`createTime`、`speechesV2[]`），**接口按 index 倒序返回**，需自行升序；分页边界可能重叠，按 `id` 去重。没有 parentId/childrenIds（重生成信息只在 `subConversationId` 里，暂不建模）。
+- **`speechesV2[].content[]` 是被低估的富文本**（已观测四类）：`text`（`msg`）、`think`（`title` + `content` → **Reasoning.summary + content**）、`searchGuid`（`docs[{title,url,quote}]` → **Citations**）、`txt`/`pdf`（`url`+`fileName`+`size`+`mediaId` → **Attachment + FilePart**）。未知类型若带 `msg`/`content` 字符串则降级为文本，否则丢弃。
+- **时间戳是 epoch 秒**（10 位），但同族接口偶尔给毫秒/字符串，`toIsoTime` 三种都接。
+- **会话级 `multiMediaInfo[]`** 是另一条附件来源（用户上传但在轮次内容里没重复出现的文件），需与轮次内附件按 id 合并去重。
+- **`agentId` 是隐藏维度**：URL 形如 `/chat/<agentId>/<conversationId>`，列表接口也带 `agent_id`。默认 agent 为 `naQivTmsDa`（"元宝"本体），自建 AI 应用各有独立 agent id 与独立会话列表——本适配器从 URL 取、缺省回落默认值，**自定义 agent 的会话未覆盖**（留作后续）。
+- `model` 取最后一条 assistant speech 的 `chatModelId`（如 `hunyuan_gpt_175B_0404` / `deep_seek_v3`，逐轮可变）；`sourceUrl` = `https://yuanbao.tencent.com/chat/${agentId}/${id}`。
+
+**已知局限（诚实标注）**：
+
+- **生图结果不在 detail 的 content 里**：实测一个"生成儿童游乐场图"的会话，detail 只返回提示词文本（含 `[](@replace=1)` 占位），图片本体不在该字段——生图类会话会丢失图片，需另找端点才能补齐。
+- **强风控**：第三方经验与本次实测都指向"别打快"。适配器完全依赖管道的 500ms 节流，切勿并发；游标分页本身也天然限制了节奏。
+- 附件 URL 指向 `hunyuan.tencent.com/api/resource/download?...`（跨域），v1 只存元数据不下载。
+
+**通用性结论**：第六个平台在鉴权（纯 Cookie）、分页（列表游标 + 详情反向 index 窗口）、数据模型（轮次数组 + `speechesV2.content` 富文本块）上又是全新组合，仍映射到**同一份 Schema v1**，`schema`/`core`/`exporters` **零改动**——新增代码只有 `packages/adapter-yuanbao/`。由 `fixtures/yuanbao/` 的列表 + 两段详情（模拟 hasMore 续拉）快照测试固化。
+
 ## 附：产品形态决策
 
 首发采用**核心库 + 多形态**架构：`core` 与形态解耦，v0.1 先出油猴脚本形态（免 token、天然带登录态、安装门槛低），浏览器扩展和 CLI 后续跟进。
