@@ -13,7 +13,7 @@ Most existing tools export one conversation at a time and only produce Markdown.
 
 ## Status
 
-**v0.1 — alpha.** The core pipeline, Schema v1, and six adapters (Kimi, Gemini, Grok, DeepSeek, ChatGPT, Yuanbao) are working end-to-end in the shipping userscript, verified against live accounts (real conversations exported to disk; the Kimi run was byte-verified by SHA-256). The platforms span deliberately different extremes — clean JSON vs. `batchexecute` positional arrays vs. cookie-only REST vs. reasoning-chain branch trees vs. mixed system/tool/image mapping trees vs. a strongly rate-limited turn array with rich `speechesV2` blocks — proving the Schema and pipeline aren't overfit to one platform.
+**v0.1 — alpha.** The core pipeline, Schema v1, and seven adapters (Kimi, Gemini, Grok, DeepSeek, ChatGPT, Yuanbao, Hunyuan) are working end-to-end in the shipping userscript, verified against live accounts (real conversations exported to disk; the Kimi run was byte-verified by SHA-256). The platforms span deliberately different extremes — clean JSON vs. `batchexecute` positional arrays vs. cookie-only REST vs. reasoning-chain branch trees vs. mixed system/tool/image mapping trees vs. a strongly rate-limited turn array with rich `speechesV2` blocks vs. a cross-origin cookie gateway with `lastId`-cursor detail paging — proving the Schema and pipeline aren't overfit to one platform.
 
 This is honest-status software: the platform matrix below marks a **last-verified date** rather than a permanent ✅, because private APIs change without notice.
 
@@ -27,14 +27,17 @@ This is honest-status software: the platform matrix below marks a **last-verifie
 | **DeepSeek** (`chat.deepseek.com`) | REST / JSON | `Authorization: Bearer` (localStorage token) | ✅ Working (shipping form) | 2026-07 |
 | **ChatGPT** (`chatgpt.com`) | REST / JSON | `Authorization: Bearer` (`/api/auth/session` token) | ✅ Working (shipping form) | 2026-07 |
 | **Yuanbao** (`yuanbao.tencent.com`) | REST / JSON (POST) | Cookie only (`hy_token` + `uin`) | ✅ Working ² | 2026-11 |
+| **Hunyuan AI Studio** (`aistudio.tencent.com`) | REST / JSON (POST, cross-origin gateway) | Cookie only (`hunyuan_token` + `hy_token`) | ✅ Working ³ | 2026-11 |
 
 ¹ Gemini conversation detail is fetched 100 turns per request; for conversations beyond that, the older-turns continuation token is inferred from the list RPC's symmetry and still being validated against a live long chat.
 
 ² Yuanbao has no CSRF token — the cookies alone authorize both endpoints — but it has the strictest anti-bot of the set, so the 500 ms throttle is mandatory. Two known gaps: image-generation results are not in the detail payload (only the prompt text), and conversations belonging to custom Yuanbao agents are not enumerated (the default agent is).
 
+³ Hunyuan's API lives on `api.hunyuan.tencent.com` and is called cross-origin with cookies (the page's CORS allows it). Listing uses `offset`/`limit` with pinned chats in a separate array; detail paging needs the `lastId` cursor (`chatRecordId` of the oldest loaded turn), which was read from the web bundle because short histories never exercise it. Citations and file blocks are mapped defensively but have not been observed on a live Hunyuan conversation yet.
+
 Want another platform? See [Writing an adapter](#writing-an-adapter).
 
-## Install & use (Kimi, Gemini, Grok, DeepSeek, ChatGPT & Yuanbao)
+## Install & use (Kimi, Gemini, Grok, DeepSeek, ChatGPT, Yuanbao & Hunyuan)
 
 v0.1 ships in two forms with identical behavior (same in-page code, `@ace/app-core`): a **Tampermonkey userscript** and a **Chrome extension**. Neither needs token setup — both run in your logged-in session and pick the right adapter per site.
 
@@ -62,11 +65,11 @@ v0.1 ships in two forms with identical behavior (same in-page code, `@ace/app-co
 
 ### Usage (same for both forms)
 
-1. Go to [kimi.com](https://www.kimi.com/), [gemini.google.com](https://gemini.google.com/), [grok.com](https://grok.com/), [chat.deepseek.com](https://chat.deepseek.com/), [chatgpt.com](https://chatgpt.com/) **or** [yuanbao.tencent.com](https://yuanbao.tencent.com/), log in, and click the **“Export all chats”** button (bottom-right).
+1. Go to [kimi.com](https://www.kimi.com/), [gemini.google.com](https://gemini.google.com/), [grok.com](https://grok.com/), [chat.deepseek.com](https://chat.deepseek.com/), [chatgpt.com](https://chatgpt.com/), [yuanbao.tencent.com](https://yuanbao.tencent.com/) **or** [aistudio.tencent.com](https://aistudio.tencent.com/), log in, and click the **“Export all chats”** button (bottom-right).
 2. A dialog lets you pick the conversation range to export (1-based, inclusive — e.g. 1–100; leave “to” empty for everything) and optionally load the total conversation count.
 3. A `<platform>-export-YYYY-MM-DD.zip` downloads, with Markdown and JSON kept in separate folders:
    ```
-   kimi/            (or gemini/, grok/, deepseek/, chatgpt/, yuanbao/)
+   kimi/            (or gemini/, grok/, deepseek/, chatgpt/, yuanbao/, hunyuan/)
    ├── markdown/    one .md per conversation
    └── json/        one .json per conversation
    ```
@@ -119,6 +122,7 @@ packages/
   adapter-deepseek/    Fourth adapter (Bearer REST, reasoning chains + branch tree)
   adapter-chatgpt/     Fifth adapter (Bearer REST, mapping tree with system/tool/image nodes)
   adapter-yuanbao/     Sixth adapter (cookie-only POST, turn array with rich speechesV2 blocks)
+  adapter-hunyuan/     Seventh adapter (cross-origin cookie gateway, lastId-cursor detail paging)
   exporter-markdown/   Human-readable .md per conversation
   exporter-json/       Schema-faithful .json per conversation
   exporter-zip/        Bundles the batch (fflate)
@@ -149,7 +153,7 @@ pnpm schema:json      # regenerate the published JSON Schema
 
 ## Writing an adapter
 
-Implement `PlatformAdapter` in a new `packages/adapter-<name>/`, mapping the platform's responses onto Schema v1, and add anonymized fixtures with a snapshot test. The six existing adapters are worked examples of different extremes: Kimi (clean JSON, tree-structured messages, Bearer token), Gemini (positional `batchexecute` arrays, linear turns, cookie auth), Grok (cookie-only REST, `parentResponseId` message tree, per-message model), DeepSeek (Bearer REST, single-endpoint detail, `thinking_content` reasoning chains, and a full branch tree where the visible thread is the active path walked from `current_message_id`), ChatGPT (Bearer token from `/api/auth/session`, offset/limit listing, and a `mapping` tree whose visible thread is walked from `current_node` while system/tool-call scaffolding is filtered out and generated images on `tool` nodes are kept), and Yuanbao (cookie-only POST endpoints, a cursor-paginated listing plus a *reverse index window* for detail paging, and a turn array whose `speechesV2[].content[]` blocks carry text / `think` reasoning / `searchGuid` citations / file attachments). If it maps to the same Schema without touching `schema` or `core`, the design is holding.
+Implement `PlatformAdapter` in a new `packages/adapter-<name>/`, mapping the platform's responses onto Schema v1, and add anonymized fixtures with a snapshot test. The seven existing adapters are worked examples of different extremes: Kimi (clean JSON, tree-structured messages, Bearer token), Gemini (positional `batchexecute` arrays, linear turns, cookie auth), Grok (cookie-only REST, `parentResponseId` message tree, per-message model), DeepSeek (Bearer REST, single-endpoint detail, `thinking_content` reasoning chains, and a full branch tree where the visible thread is the active path walked from `current_message_id`), ChatGPT (Bearer token from `/api/auth/session`, offset/limit listing, and a `mapping` tree whose visible thread is walked from `current_node` while system/tool-call scaffolding is filtered out and generated images on `tool` nodes are kept), and Yuanbao (cookie-only POST endpoints, a cursor-paginated listing plus a *reverse index window* for detail paging, and a turn array whose `speechesV2[].content[]` blocks carry text / `think` reasoning / `searchGuid` citations / file attachments), and Hunyuan (a cross-origin cookie gateway on its own host, `offset`/`limit` listing with pinned chats in a separate array, detail paging that needs the `lastId` cursor plus the oldest `index`, and `thought` blocks that put their body in `msg` instead of `content`). If it maps to the same Schema without touching `schema` or `core`, the design is holding.
 
 ## Privacy & compliance
 
@@ -162,7 +166,7 @@ Implement `PlatformAdapter` in a new `packages/adapter-<name>/`, mapping the pla
 
 | Version | Scope |
 |---|---|
-| **v0.1** | Schema v1 + Kimi, Gemini, Grok, DeepSeek, ChatGPT & Yuanbao adapters + MD/JSON/ZIP exporters + userscript (range dialog) + Chrome extension |
+| **v0.1** | Schema v1 + Kimi, Gemini, Grok, DeepSeek, ChatGPT, Yuanbao & Hunyuan adapters + MD/JSON/ZIP exporters + userscript (range dialog) + Chrome extension |
 | **v0.1.2** | Optional attachment download (images & uploaded files), streaming ZIP (`ZipSink`), ChatGPT attachment resolution via `/backend-api/files/{id}/download` |
 | v0.2 | CLI form (incremental backup) + another high-demand platform |
 | v0.3 | Adapter guide + fixture anonymizer + CONTRIBUTING — open community adapters |

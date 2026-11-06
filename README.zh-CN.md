@@ -13,7 +13,7 @@
 
 ## 项目状态
 
-**v0.1 —— alpha。** 核心管道、Schema v1 与六个适配器（Kimi、Gemini、Grok、DeepSeek、ChatGPT、腾讯元宝）均已在发行的油猴脚本中端到端可用，并经真实账号验证（真实对话导出到磁盘；Kimi 那次运行经 SHA-256 逐字节校验）。这几个平台刻意选了不同的极端——干净的 JSON、`batchexecute` 位置数组、仅靠 cookie 的 REST、带思维链的分支树、混合 system/tool/image 的 mapping 树、强风控下带富文本块的轮次数组——证明 Schema 与管道没有过拟合到单一平台。
+**v0.1 —— alpha。** 核心管道、Schema v1 与七个适配器（Kimi、Gemini、Grok、DeepSeek、ChatGPT、腾讯元宝、腾讯混元）均已在发行的油猴脚本中端到端可用，并经真实账号验证（真实对话导出到磁盘；Kimi 那次运行经 SHA-256 逐字节校验）。这几个平台刻意选了不同的极端——干净的 JSON、`batchexecute` 位置数组、仅靠 cookie 的 REST、带思维链的分支树、混合 system/tool/image 的 mapping 树、强风控下带富文本块的轮次数组、跨域 Cookie 网关配 `lastId` 游标的详情续页——证明 Schema 与管道没有过拟合到单一平台。
 
 这是一款「诚实状态」的软件：下方平台矩阵标注的是**最近验证日期**，而非永久的 ✅，因为私有 API 会在没有通知的情况下变动。
 
@@ -27,14 +27,17 @@
 | **DeepSeek** (`chat.deepseek.com`) | REST / JSON | `Authorization: Bearer`（localStorage token） | ✅ 可用（发行形态） | 2026-07 |
 | **ChatGPT** (`chatgpt.com`) | REST / JSON | `Authorization: Bearer`（`/api/auth/session` token） | ✅ 可用（发行形态） | 2026-07 |
 | **腾讯元宝** (`yuanbao.tencent.com`) | REST / JSON（POST） | 仅 Cookie（`hy_token` + `uin`） | ✅ 可用 ² | 2026-11 |
+| **腾讯混元 AI Studio** (`aistudio.tencent.com`) | REST / JSON（POST，跨域网关） | 仅 Cookie（`hunyuan_token` + `hy_token`） | ✅ 可用 ³ | 2026-11 |
 
 ¹ Gemini 对话详情每次请求拉取 100 轮；超过 100 轮的对话依赖“更旧轮次”续页 token，该 token 位置系从列表 RPC 的对称结构推断，尚待真实超长对话验证。
 
 ² 元宝没有 CSRF token（Cookie 即可授权两个端点），但它是本项目中风控最严的平台，**500ms 节流不可关闭**。两个已知缺口：生图结果不在详情响应里（只有提示词文本）、自建 AI 应用（自定义 agent）的会话不在列表枚举范围（仅默认元宝 agent）。
 
+³ 混元的接口在独立域 `api.hunyuan.tencent.com`，由页面跨域带 Cookie 调用（站点自身 CORS 已放开）。列表是 offset/limit 分页、置顶会话单独放在 `pinnedData`；详情续页必须带 `lastId` 游标（最早一轮的 `chatRecordId`），该规则来自前端 bundle——短历史账号抓包无法体现。引用与文件块已做防御性映射，但尚未在真实混元会话中观测到。
+
 想要其他平台？见[编写适配器](#编写适配器)。
 
-## 安装与使用（Kimi、Gemini、Grok、DeepSeek、ChatGPT 与腾讯元宝）
+## 安装与使用（Kimi、Gemini、Grok、DeepSeek、ChatGPT、腾讯元宝与腾讯混元）
 
 v0.1 提供两种发行形态，功能完全一致（同一份页内代码 `@ace/app-core`）：**Tampermonkey 油猴脚本**和 **Chrome 扩展**。都无需配置 token，运行在你已登录的会话中，并按站点自动选择对应适配器。
 
@@ -62,11 +65,11 @@ v0.1 提供两种发行形态，功能完全一致（同一份页内代码 `@ace
 
 ### 使用（两种形态相同）
 
-1. 打开 [kimi.com](https://www.kimi.com/)、[gemini.google.com](https://gemini.google.com/)、[grok.com](https://grok.com/)、[chat.deepseek.com](https://chat.deepseek.com/)、[chatgpt.com](https://chatgpt.com/) **或** [yuanbao.tencent.com](https://yuanbao.tencent.com/) 登录，点击右下角的 **“Export all chats”** 按钮。
+1. 打开 [kimi.com](https://www.kimi.com/)、[gemini.google.com](https://gemini.google.com/)、[grok.com](https://grok.com/)、[chat.deepseek.com](https://chat.deepseek.com/)、[chatgpt.com](https://chatgpt.com/)、[yuanbao.tencent.com](https://yuanbao.tencent.com/) **或** [aistudio.tencent.com](https://aistudio.tencent.com/) 登录，点击右下角的 **“Export all chats”** 按钮。
 2. 弹出的对话框可选择导出的对话区间（从 1 开始、含首尾，如 1–100；“to” 留空则导出全部），也可按需加载对话总数。
 3. 会下载一个 `<platform>-export-YYYY-MM-DD.zip`，Markdown 与 JSON 分目录存放：
    ```
-   kimi/            （或 gemini/、grok/、deepseek/、chatgpt/、yuanbao/）
+   kimi/            （或 gemini/、grok/、deepseek/、chatgpt/、yuanbao/、hunyuan/）
    ├── markdown/    每条对话一个 .md
    └── json/        每条对话一个 .json
    ```
@@ -119,6 +122,7 @@ packages/
   adapter-deepseek/    第四个适配器（Bearer REST、思维链 + 分支树）
   adapter-chatgpt/     第五个适配器（Bearer REST、含 system/tool/image 节点的 mapping 树）
   adapter-yuanbao/     第六个适配器（仅 Cookie 的 POST、带富文本块的轮次数组）
+  adapter-hunyuan/     第七个适配器（跨域 Cookie 网关、lastId 游标详情续页）
   exporter-markdown/   每条对话一个可读的 .md
   exporter-json/       每条对话一个忠于 Schema 的 .json
   exporter-zip/        打包整批（fflate）
@@ -149,7 +153,7 @@ pnpm schema:json      # 重新生成发布用的 JSON Schema
 
 ## 编写适配器
 
-在新的 `packages/adapter-<name>/` 中实现 `PlatformAdapter`，把平台的响应映射到 Schema v1，并附带匿名化 fixture 与一个快照测试。现有六个适配器是不同极端的范例：Kimi（干净的 JSON、树形消息、Bearer token）、Gemini（基于位置的 `batchexecute` 数组、线性回合、cookie 认证）、Grok（仅 cookie 的 REST、`parentResponseId` 消息树、逐条消息级 model）、DeepSeek（Bearer REST、单端点详情、`thinking_content` 思维链、以及保留全部分支的消息树——可见主线是从 `current_message_id` 沿父链上走出的活跃路径）与 ChatGPT（从 `/api/auth/session` 取 Bearer token、offset/limit 列表分页、以及一棵 `mapping` 树——可见主线从 `current_node` 走出，同时过滤掉 system/tool-call 脚手架，并保留 `tool` 节点上生成的图像）、腾讯元宝（仅 Cookie 的 POST 端点、列表走游标分页而详情走“反向 index 窗口”分页、轮次数组中的 `speechesV2[].content[]` 块承载文本 / `think` 思维链 / `searchGuid` 引用 / 文件附件）。如果它在不触碰 `schema` 或 `core` 的前提下就能映射到同一份 Schema，说明设计站得住。
+在新的 `packages/adapter-<name>/` 中实现 `PlatformAdapter`，把平台的响应映射到 Schema v1，并附带匿名化 fixture 与一个快照测试。现有七个适配器是不同极端的范例：Kimi（干净的 JSON、树形消息、Bearer token）、Gemini（基于位置的 `batchexecute` 数组、线性回合、cookie 认证）、Grok（仅 cookie 的 REST、`parentResponseId` 消息树、逐条消息级 model）、DeepSeek（Bearer REST、单端点详情、`thinking_content` 思维链、以及保留全部分支的消息树——可见主线是从 `current_message_id` 沿父链上走出的活跃路径）与 ChatGPT（从 `/api/auth/session` 取 Bearer token、offset/limit 列表分页、以及一棵 `mapping` 树——可见主线从 `current_node` 走出，同时过滤掉 system/tool-call 脚手架，并保留 `tool` 节点上生成的图像）、腾讯元宝（仅 Cookie 的 POST 端点、列表走游标分页而详情走“反向 index 窗口”分页、轮次数组中的 `speechesV2[].content[]` 块承载文本 / `think` 思维链 / `searchGuid` 引用 / 文件附件）、腾讯混元（独立域名的跨域 Cookie 网关、offset/limit 列表且置顶会话单独成数组、详情续页需要 `lastId` 游标配最早一条的 `index`、思考块叫 `thought` 且正文放在 `msg` 里）。如果它在不触碰 `schema` 或 `core` 的前提下就能映射到同一份 Schema，说明设计站得住。
 
 ## 隐私与合规
 
@@ -162,7 +166,7 @@ pnpm schema:json      # 重新生成发布用的 JSON Schema
 
 | 版本 | 范围 |
 |---|---|
-| **v0.1** | Schema v1 + Kimi、Gemini、Grok、DeepSeek、ChatGPT 与腾讯元宝适配器 + MD/JSON/ZIP 导出器 + 油猴脚本（区间对话框）+ Chrome 扩展 |
+| **v0.1** | Schema v1 + Kimi、Gemini、Grok、DeepSeek、ChatGPT、腾讯元宝与腾讯混元适配器 + MD/JSON/ZIP 导出器 + 油猴脚本（区间对话框）+ Chrome 扩展 |
 | **v0.1.2** | 可选附件下载（图片与上传文件）、流式 ZIP（`ZipSink`）、ChatGPT 附件通过 `/backend-api/files/{id}/download` 端点解析 |
 | v0.2 | CLI 形态（增量备份）+ 另一个高需求平台 |
 | v0.3 | 适配器指南 + fixture 匿名化工具 + CONTRIBUTING —— 开放社区适配器 |

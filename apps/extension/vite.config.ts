@@ -19,10 +19,10 @@ function emitManifest(): Plugin {
     writeBundle(options) {
       const manifest = {
         manifest_version: 3,
-        name: "AI Chat 全部对话导出 / Export All Chats (Kimi, Gemini, Grok, DeepSeek, ChatGPT & Yuanbao)",
+        name: "AI Chat 全部对话导出 / Export All Chats (Kimi, Gemini, Grok, DeepSeek, ChatGPT, Yuanbao & Hunyuan)",
         version: pkg.version,
         description:
-          "Batch-export your Kimi, Gemini, Grok, DeepSeek, ChatGPT & Yuanbao conversations to Markdown + JSON, zipped. Runs entirely in your browser.",
+          "Batch-export your Kimi, Gemini, Grok, DeepSeek, ChatGPT, Yuanbao & Hunyuan conversations to Markdown + JSON, zipped. Runs entirely in your browser.",
         homepage_url: "https://github.com/wanda1416/ai-chat-exporter",
         content_scripts: [
           {
@@ -33,6 +33,8 @@ function emitManifest(): Plugin {
               "https://chat.deepseek.com/*",
               "https://chatgpt.com/*",
               "https://yuanbao.tencent.com/*",
+              "https://aistudio.tencent.com/*",
+              "https://hunyuan.tencent.com/*",
             ],
             js: ["content.js"],
             world: "MAIN",

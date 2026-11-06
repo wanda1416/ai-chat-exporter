@@ -1,0 +1,60 @@
+{
+  "code": 200,
+  "msg": "success",
+  "totalCount": 2,
+  "data": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "userId": "00000000-0000-4000-8000-0000000000aa",
+      "chatModelId": "hy4",
+      "title": "Hunyuan identity greeting",
+      "createdAt": 1773970500,
+      "updatedAt": 1773970715,
+      "deletedAt": 0,
+      "agentId": "HunyuanDefault",
+      "resultUrl": "",
+      "chatModel": true,
+      "modelId": 328,
+      "modelTag": "text",
+      "funcName": "Hy4",
+      "status": "success",
+      "source": "",
+      "pinnedAt": 0,
+      "isEnEnvUse": true,
+      "isPinned": false
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000002",
+      "userId": "00000000-0000-4000-8000-0000000000aa",
+      "chatModelId": "hy4",
+      "title": "Quicksort in Rust",
+      "createdAt": 1770869600,
+      "updatedAt": 1770869978,
+      "deletedAt": 0,
+      "agentId": "HunyuanDefault",
+      "modelId": 328,
+      "modelTag": "text",
+      "status": "success",
+      "pinnedAt": 0,
+      "isPinned": false
+    }
+  ],
+  "pinnedTotalCount": 1,
+  "pinnedData": [
+    {
+      "id": "00000000-0000-4000-8000-000000000003",
+      "userId": "00000000-0000-4000-8000-0000000000aa",
+      "chatModelId": "hy4",
+      "title": "Pinned: release checklist",
+      "createdAt": 1770321500,
+      "updatedAt": 1770321588,
+      "deletedAt": 0,
+      "agentId": "HunyuanDefault",
+      "modelId": 328,
+      "modelTag": "text",
+      "status": "success",
+      "pinnedAt": 1770321600,
+      "isPinned": true
+    }
+  ]
+}

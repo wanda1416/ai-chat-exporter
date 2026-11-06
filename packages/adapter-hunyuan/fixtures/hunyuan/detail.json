@@ -1,0 +1,94 @@
+{
+  "id": "00000000-0000-4000-8000-000000000001",
+  "isExpire": false,
+  "code": 0,
+  "modelId": "hy4",
+  "chatModelId": "hy4",
+  "title": "",
+  "hasMore": true,
+  "multiMediaInfo": [
+    {
+      "type": "txt",
+      "url": "https://hunyuan.tencent.com/api/resource/download?resourceId=00000000000000000000000000000001",
+      "fileName": "tide-notes.txt",
+      "size": 2048,
+      "mediaId": "media-0000-0001"
+    }
+  ],
+  "convs": [
+    {
+      "id": "00000000-0000-4000-8000-0000000000c4",
+      "chatRecordId": "00000000-0000-4000-8000-0000000000b4",
+      "conversationId": "00000000-0000-4000-8000-000000000001",
+      "status": 0,
+      "speaker": "ai",
+      "index": 4,
+      "createTime": 1773970590,
+      "empty": false,
+      "speechesV2": [
+        {
+          "traceID": "00000000000000000000000000000004",
+          "speechType": "text",
+          "chatModelId": "hy4",
+          "content": [
+            {
+              "type": "text",
+              "msg": "I saved the summary to a file for you.",
+              "isDone": true
+            },
+            {
+              "type": "txt",
+              "url": "https://hunyuan.tencent.com/api/resource/download?resourceId=00000000000000000000000000000002",
+              "fileName": "tide-summary.txt",
+              "size": 144304,
+              "mediaId": "media-0000-0002"
+            },
+            {
+              "type": "searchGuid",
+              "title": "引用 2 篇资料作为参考",
+              "docs": [
+                {
+                  "index": 1,
+                  "title": "Understanding Tides",
+                  "url": "https://example.com/tides",
+                  "sourceName": "网页",
+                  "quote": "A primer on spring and neap tides."
+                },
+                {
+                  "index": 2,
+                  "title": "Tidal Forces",
+                  "url": "https://example.com/tidal-forces",
+                  "sourceName": "网页",
+                  "quote": "The differential gravitational field across Earth's diameter."
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-0000000000c3",
+      "chatRecordId": "00000000-0000-4000-8000-0000000000b3",
+      "conversationId": "00000000-0000-4000-8000-000000000001",
+      "status": 0,
+      "speaker": "human",
+      "index": 3,
+      "createTime": 1773970560,
+      "empty": false,
+      "speechesV2": [
+        {
+          "speechType": "text",
+          "chatModelId": "hy4",
+          "content": [
+            {
+              "type": "text",
+              "msg": "Can you summarise that in three lines?",
+              "isDone": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

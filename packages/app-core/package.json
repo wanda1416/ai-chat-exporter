@@ -15,6 +15,7 @@
     "@ace/adapter-deepseek": "workspace:*",
     "@ace/adapter-gemini": "workspace:*",
     "@ace/adapter-grok": "workspace:*",
+    "@ace/adapter-hunyuan": "workspace:*",
     "@ace/adapter-kimi": "workspace:*",
     "@ace/adapter-yuanbao": "workspace:*",
     "@ace/core": "workspace:*",

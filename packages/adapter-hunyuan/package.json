@@ -1,0 +1,17 @@
+{
+  "name": "@ace/adapter-hunyuan",
+  "version": "0.1.3",
+  "description": "Tencent Hunyuan AI Studio (aistudio.tencent.com) platform adapter.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ace/core": "workspace:*",
+    "@ace/schema": "workspace:*"
+  }
+}

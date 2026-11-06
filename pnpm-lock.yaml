@@ -77,6 +77,15 @@ importers:
         specifier: workspace:*
         version: link:../schema
 
+  packages/adapter-hunyuan:
+    dependencies:
+      '@ace/core':
+        specifier: workspace:*
+        version: link:../core
+      '@ace/schema':
+        specifier: workspace:*
+        version: link:../schema
+
   packages/adapter-kimi:
     dependencies:
       '@ace/core':
@@ -109,6 +118,9 @@ importers:
       '@ace/adapter-grok':
         specifier: workspace:*
         version: link:../adapter-grok
+      '@ace/adapter-hunyuan':
+        specifier: workspace:*
+        version: link:../adapter-hunyuan
       '@ace/adapter-kimi':
         specifier: workspace:*
         version: link:../adapter-kimi

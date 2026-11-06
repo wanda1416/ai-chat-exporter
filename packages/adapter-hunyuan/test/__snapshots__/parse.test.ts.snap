@@ -1,0 +1,102 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`hunyuan adapter parsing (golden fixtures) > assembles a Conversation from both detail windows 1`] = `
+{
+  "attachments": [
+    {
+      "id": "media-0000-0002",
+      "mimeType": "text/plain",
+      "name": "tide-summary.txt",
+      "sizeBytes": 144304,
+      "url": "https://hunyuan.tencent.com/api/resource/download?resourceId=00000000000000000000000000000002",
+    },
+    {
+      "id": "media-0000-0001",
+      "mimeType": "text/plain",
+      "name": "tide-notes.txt",
+      "sizeBytes": 2048,
+      "url": "https://hunyuan.tencent.com/api/resource/download?resourceId=00000000000000000000000000000001",
+    },
+  ],
+  "createdAt": "2026-03-20T01:35:00.000Z",
+  "id": "00000000-0000-4000-8000-000000000001",
+  "messages": [
+    {
+      "content": [
+        {
+          "text": "How do tides form? I attached a chart.",
+          "type": "text",
+        },
+      ],
+      "id": "00000000-0000-4000-8000-0000000000c1",
+      "role": "user",
+      "timestamp": "2026-03-20T01:35:00.000Z",
+    },
+    {
+      "content": [
+        {
+          "text": "Tides are caused by the Moon's and Sun's gravitational pull on the ocean.",
+          "type": "text",
+        },
+      ],
+      "id": "00000000-0000-4000-8000-0000000000c2",
+      "model": "hy4",
+      "reasoning": {
+        "content": "The user asks about tides, so the Moon's gravity is the key driver.",
+        "summary": "已深度思考",
+      },
+      "role": "assistant",
+      "timestamp": "2026-03-20T01:35:30.000Z",
+    },
+    {
+      "content": [
+        {
+          "text": "Can you summarise that in three lines?",
+          "type": "text",
+        },
+      ],
+      "id": "00000000-0000-4000-8000-0000000000c3",
+      "role": "user",
+      "timestamp": "2026-03-20T01:36:00.000Z",
+    },
+    {
+      "attachments": [
+        "media-0000-0002",
+      ],
+      "citations": [
+        {
+          "snippet": "A primer on spring and neap tides.",
+          "title": "Understanding Tides",
+          "url": "https://example.com/tides",
+        },
+        {
+          "snippet": "The differential gravitational field across Earth's diameter.",
+          "title": "Tidal Forces",
+          "url": "https://example.com/tidal-forces",
+        },
+      ],
+      "content": [
+        {
+          "text": "I saved the summary to a file for you.",
+          "type": "text",
+        },
+        {
+          "attachmentId": "media-0000-0002",
+          "name": "tide-summary.txt",
+          "type": "file",
+        },
+      ],
+      "id": "00000000-0000-4000-8000-0000000000c4",
+      "model": "hy4",
+      "role": "assistant",
+      "timestamp": "2026-03-20T01:36:30.000Z",
+    },
+  ],
+  "model": "hy4",
+  "platform": "hunyuan",
+  "schemaVersion": "1",
+  "sourceUrl": "https://aistudio.tencent.com/chat/HunyuanDefault/00000000-0000-4000-8000-000000000001",
+  "title": "Hunyuan identity greeting",
+  "updatedAt": "2026-03-20T01:36:30.000Z",
+}
+`;

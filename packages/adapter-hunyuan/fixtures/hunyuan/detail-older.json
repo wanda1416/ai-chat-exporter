@@ -1,0 +1,67 @@
+{
+  "id": "00000000-0000-4000-8000-000000000001",
+  "isExpire": false,
+  "code": 0,
+  "modelId": "hy4",
+  "chatModelId": "",
+  "title": "",
+  "hasMore": false,
+  "multiMediaInfo": null,
+  "convs": [
+    {
+      "id": "00000000-0000-4000-8000-0000000000c2",
+      "chatRecordId": "00000000-0000-4000-8000-0000000000b2",
+      "conversationId": "00000000-0000-4000-8000-000000000001",
+      "status": 0,
+      "speaker": "ai",
+      "index": 2,
+      "createTime": 1773970530,
+      "empty": false,
+      "speechesV2": [
+        {
+          "traceID": "00000000000000000000000000000002",
+          "speechType": "thought",
+          "chatModelId": "hy4",
+          "content": [
+            {
+              "type": "thought",
+              "id": "00000000-0000-4000-8000-0000000000b2",
+              "msg": "The user asks about tides, so the Moon's gravity is the key driver.",
+              "title": "已深度思考",
+              "cost": 1.914,
+              "isDone": true
+            },
+            {
+              "type": "text",
+              "msg": "Tides are caused by the Moon's and Sun's gravitational pull on the ocean.",
+              "isDone": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-0000000000c1",
+      "chatRecordId": "00000000-0000-4000-8000-0000000000b1",
+      "conversationId": "00000000-0000-4000-8000-000000000001",
+      "status": 0,
+      "speaker": "human",
+      "index": 1,
+      "createTime": 1773970500,
+      "empty": false,
+      "speechesV2": [
+        {
+          "speechType": "text",
+          "chatModelId": "hy4",
+          "content": [
+            {
+              "type": "text",
+              "msg": "How do tides form? I attached a chart.",
+              "isDone": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

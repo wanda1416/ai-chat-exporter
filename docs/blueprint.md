@@ -271,7 +271,7 @@ interface PlatformAdapter {
 
 ## 14. 腾讯元宝适配器：真实 API 发现（第六个适配器）
 
-> 2026-11 通过 Kimi WebBridge 在用户已登录的真实浏览器里被动录制（录制脚本 `tools/yuanbao-capture.js`），随后直接在页面上下文执行适配器本体做 dogfood：列表 9 条会话、详情逐条拉取、思考链/联网引用/文件附件三类映射全部实测通过（`Conversation.parse` 校验通过）。这是第六种「极端」——**强风控的 Cookie-only POST 接口 + 轮次数组而非消息树**。
+> 2026-11 通过 Kimi WebBridge 在用户已登录的真实浏览器里被动录制（录制脚本 `tools/api-capture.js`），随后直接在页面上下文执行适配器本体做 dogfood：列表 9 条会话、详情逐条拉取、思考链/联网引用/文件附件三类映射全部实测通过（`Conversation.parse` 校验通过）。这是第六种「极端」——**强风控的 Cookie-only POST 接口 + 轮次数组而非消息树**。
 
 **基址与协议**：`https://yuanbao.tencent.com`，全部 POST + JSON，同源。列表/详情之外还有 `updateModel`、`model/list`、`getRunningConversations` 等噪音端点，导出只用两个。
 
@@ -300,6 +300,39 @@ interface PlatformAdapter {
 - 附件 URL 指向 `hunyuan.tencent.com/api/resource/download?...`（跨域），v1 只存元数据不下载。
 
 **通用性结论**：第六个平台在鉴权（纯 Cookie）、分页（列表游标 + 详情反向 index 窗口）、数据模型（轮次数组 + `speechesV2.content` 富文本块）上又是全新组合，仍映射到**同一份 Schema v1**，`schema`/`core`/`exporters` **零改动**——新增代码只有 `packages/adapter-yuanbao/`。由 `fixtures/yuanbao/` 的列表 + 两段详情（模拟 hasMore 续拉）快照测试固化。
+
+## 15. 腾讯混元 AI Studio 适配器：真实 API 发现（第七个适配器）
+
+> 2026-11 与元宝同一套录制流程（Kimi WebBridge + `tools/api-capture.js`），随后在 aistudio.tencent.com 页面上下文执行适配器本体验证：列表 1 条会话、详情 2 轮、思考链映射正确、`Conversation.parse` 通过。这是第七种组合——**跨域 Cookie 接口（网关独立域名）+ offset/limit 列表 + lastId 游标详情**。它与元宝同属一个后端家族（payload 形状高度相似），但端点、分页契约、思考块标签都不同，故独立成一个适配器而不是共享解析层。
+
+**基址与协议**：页面在 `https://aistudio.tencent.com`，接口在**另一个域** `https://api.hunyuan.tencent.com/api/new-portal`——页面自身跨域调用，CORS 已放开，因此适配器在页面上下文 `fetch(..., {credentials:"include"})` 即可，无需中转。老的 `hunyuan.tencent.com` 会 302/JS 跳到 aistudio 同名路径，故两个域名都要 `@match`。
+
+**认证**：**纯 Cookie**（`hunyuan_token` + `hy_token` + `hunyuan_user`，域 `.hunyuan.tencent.com`）。页面会带 `x-source: web`、`x-requested-with: XMLHttpRequest`，但**实测去掉依然 200**（适配器仍照带，避免未来被收紧）。无 CSRF token。
+
+**两个端点**：
+
+- **列表**：`POST /chat/conversation/list`，body `{limit:40, offset:0, modelTag:"all"}` → `{code:200, msg, totalCount, data:[{id, title, chatModelId, agentId, createdAt, updatedAt, modelTag, modelId, pinnedAt, ...}], pinnedTotalCount, pinnedData}`。**offset/limit 分页**（offset 按条数递增，`offset >= totalCount` 即止）；置顶会话单独放在 `pinnedData`，不在 `data` 里——导出必须两处合并去重。
+- **详情**：`POST /user/agent/conversation/v1/detail`，body `{conversationId, offset, limit, chatModelId, lastId?, agentId?}` → **裸对象** `{code:0, id, title, convs[], hasMore, modelId, chatModelId, multiMediaInfo, roleInfo, curSystemMsg, isExpire}`。
+
+**分页真相（只靠抓包抓不到，得读前端 bundle）**：该账号只有 1 条 2 轮的会话，实测 `offset`/`limit` 无论怎么给都返回全部轮次，无法从响应推断续页规则。真正答案在 web bundle 的 load-more 里：
+
+```js
+xP({ conversationId, offset: current.index, limit: current.limit, chatModelId,
+     lastId: oldestTurn.chatRecordId, agentId })
+```
+
+即**续页靠 `lastId`（当前最早一轮的 `chatRecordId`）+ `offset`（该轮 index）**，缺 `lastId` 服务器不会往前翻。适配器即按此实现，并在 `lastId` 缺失/游标不前进时终止，避免死循环。
+
+**解析要点**：
+
+- 结构同样走 `convs[].speechesV2[].content[]`，轮次按 `index` **倒序**返回；`speaker` 除 `human`/`ai` 外还有前端注入的 `custom`（分隔线/记忆块），**必须跳过**，否则会多出空消息。
+- **思考块标签与元宝不同**：混元是 `{type:"thought", msg, title, cost}`（`speechType` 也可能是 `thought`），元宝是 `{type:"think", content, title}`。解析器两种都收，`title` 落到 `Reasoning.summary`。
+- **详情接口的 `title` 基本为空字符串**，真实标题只在列表里——必须走 meta 回填，否则全部会话名会变成“第一条用户消息”。
+- 引用（`searchGuid`）与文件块（`txt`/`pdf`）**尚未在混元侧实测到**（该账号没有联网搜索/上传文件的会话）；适配器按同族 API 的形状做了防御性映射，fixture 中对应字段标注为推断。
+- 时间戳同样是 epoch 秒；会话级 `multiMediaInfo[]` 与轮次级附件按 id 合并去重；`sourceUrl` = `https://aistudio.tencent.com/chat/${agentId}/${id}`。
+- `agentId`（默认 `HunyuanDefault`）与 `chatModelId`（如 `hy4`）都从列表条目带下来——详情续页需要它们。
+
+**通用性结论**：第七个平台在**跨域网关**、列表分页（offset/limit + 置顶分离）、详情续页（`lastId` 游标 + index）、思考块命名（`thought`/`msg`）上又是一组新组合，仍映射到**同一份 Schema v1**，`schema`/`core`/`exporters` 零改动。由 `packages/adapter-hunyuan` + `fixtures/hunyuan/`（列表 + 两段详情模拟 hasMore 续页）快照测试固化。
 
 ## 附：产品形态决策
 

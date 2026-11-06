@@ -2,6 +2,7 @@ import { ChatGPTAdapter } from "@ace/adapter-chatgpt";
 import { DeepSeekAdapter } from "@ace/adapter-deepseek";
 import { GeminiAdapter } from "@ace/adapter-gemini";
 import { GrokAdapter } from "@ace/adapter-grok";
+import { HunyuanAdapter } from "@ace/adapter-hunyuan";
 import { KimiAdapter } from "@ace/adapter-kimi";
 import { YuanbaoAdapter } from "@ace/adapter-yuanbao";
 import {
@@ -48,6 +49,7 @@ function resolveAdapter(): PlatformAdapter | null {
     new DeepSeekAdapter(),
     new ChatGPTAdapter(),
     new YuanbaoAdapter(),
+    new HunyuanAdapter(),
   ];
   return adapters.find((adapter) => adapter.detect()) ?? null;
 }
